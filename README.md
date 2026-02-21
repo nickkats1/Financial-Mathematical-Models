@@ -49,7 +49,7 @@ Each chart below plots an asset's returns against the S&P 500 (^GSPC), with the 
 
 #### Market Index
 
-![^GSPC](images/sim/single_index_model_%5EGSPC.png)
+![^GSPC](images/sim/single_index_model_^GSPC.png)
 
 ---
 
