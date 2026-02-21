@@ -1,12 +1,20 @@
 
-#### Structure of this repository
-- Single-Index Model
-- Value At Risk/ Conditional Value at Risk
-- Modern Portfolio Theory
-- Utility Maximization st. Risk-Aversion
+## Financial Mathematical Models
 
+Welcome to this repository. This repository covers the following:
+
+* Modern Portfolio Theory (MPT)
+* Single Index Model (SIM)
+* Value At Risk (VaR) and Conditional
+* Maximizing Utility based on risk-aversion
+
+
+### Description
+There are five financial models in this repository that go as follows: Modern Portfolio Theory, Single Index Model (SIM), Value At Risk (VaR), Conditional Value at Risk (CVaR), Maximizing Utility based on level of risk-aversion of the investor.
+
+
+### Repository Structure
 ```text
-.
 ├── main.py
 ├── setup.py
 ├── LICENSE
@@ -50,19 +58,15 @@
         ├── etfs.csv
         ├── sp500_prices.csv
         └── stocks.csv
-
 ```
 
-#### Note Books
-[single-index_model](https://github.com/nickkats1/Portfolio/blob/main/notebooks/_single_index_model.ipynb)
 
-![sim-image](images/sim/single_index_model_AAPL.png)
 
-[risk](https://github.com/nickkats1/Portfolio/blob/main/notebooks/_risk.ipynb)
 
-[utility](https://github.com/nickkats1/Portfolio/blob/main/notebooks/_utility.ipynb)
 
-[Modern Portfolio Theory](https://github.com/nickkats1/Portfolio/blob/main/notebooks/_mpt.ipynb)
+  
+
+
 
 
 
