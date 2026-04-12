@@ -1,91 +1,75 @@
 import numpy as np
-
-from tools.config import load_config
-
+import pandas as pd
 import statsmodels.api as sm
 
-from scripts.returns import Returns
 
-from typing import Dict, List
+from src import config
+from src.data.data_ingestion import DataIngestion
 
 
 class SingleIndexModel:
+    """Single Index Model (SIM) implementation.
+
+    Regresses each asset's returns against the market (S&P 500)
+    to decompose risk into systematic and firm-specific components.
     """
-    Single Index Model (SIM) implementation:
-    r_i = alpha_i + beta_i * r_m + ε_i
-    """
 
-    def __init__(self, config, returns: Returns | None = None):
-        """
-        initializing SingleIndexModel class.
+    def __init__(self):
+        self.config = config
+        self.ingestion = DataIngestion()
 
-        Args:
-            config(dict): configuration.py.
-            returns (Returns): Returns module.
-        """
-        self.config = config or load_config()
-        self.returns = returns or Returns(self.config)
+        returns = self.ingestion.get_all_prices()
+        market_returns = self.ingestion.get_sp500_prices().squeeze()
+        shared_index = returns.index.intersection(market_returns.index)
 
-    def run(self) -> List[Dict[str, Dict[str, float]]]:
-        """
-        OLS of returns between individual assets and the SP&500.
+        self._stock_returns = returns.loc[shared_index]
+        self._market_returns = market_returns.loc[shared_index]
 
-        Returns:
-            results (List[Dict[str, Dict[str, float]]]): a list the appends the alphas, betas, systematic risks ect. for all firms against the SP&500.
-        """
-        # all_returns and market_returns
+        self._models: dict[str, sm.regression.linear_model.RegressionResultsWrapper] = {}
+        self._fit_all()
 
-        all_returns = self.returns.get_all_returns()
-        tickers = self.config["all_prices"]
-        sp500_ticker = self.config["sp500_ticker"]
 
-        # betas,alpha,residuals
+    def _fit_all(self) -> None:
+        """Run OLS for each stock against the market."""
+        X = sm.add_constant(self._market_returns)
+        for ticker in self._stock_returns.columns:
+            self._models[ticker] = sm.OLS(
+                endog=self._stock_returns[ticker],
+                exog=X,
+            ).fit()
 
-        betas = {}
-        alphas = {}
-        error_terms = {}
-        adjusted_betas = {}
-        systematic_risks = {}
-        firm_specific_risks = {}
-        total_risks = {}
 
-        results = []
+    def get_betas(self) -> dict[str, float]:
+        """Raw OLS betas for each stock."""
+        return {t: model.params.iloc[1] for t, model in self._models.items()}
 
-        for ticker in tickers:
-            asset_returns = all_returns[ticker]
-            market_returns = all_returns[sp500_ticker]
-            X = sm.add_constant(market_returns)
-            y = asset_returns
-            model = sm.OLS(exog=X, endog=y).fit()
-            alphas[ticker] = model.params.const
-            betas[ticker] = model.params.iloc[1]
-            error_terms[ticker] = model.resid
 
-            # adjusted betas
-            adjusted_betas[ticker] = (2 / 3) * betas[ticker] + (1 / 3) * 1
+    def get_alphas(self) -> dict[str, float]:
+        """OLS intercepts (alphas) for each stock."""
+        return {t: model.params.iloc[0] for t, model in self._models.items()}
 
-            # market index risk
-            market_index_risk = np.var(market_returns)
 
-            # firm-specific risk
-            firm_specific_risks[ticker] = np.var(asset_returns)
+    def get_residuals(self) -> dict[str, pd.Series]:
+        """OLS residuals (error terms) for each stock."""
+        return {t: model.resid for t, model in self._models.items()}
 
-            # Systematic Risk
-            systematic_risks[ticker] = (betas[ticker] ** 2) * market_index_risk
 
-            # total risk
-            total_risks[ticker] = systematic_risks[ticker] + firm_specific_risks[ticker]
+    def get_market_variance(self) -> float:
+        """Variance of the market returns."""
+        return float(np.var(self._market_returns))
 
-            results.append(
-                {
-                    "betas": betas,
-                    "alphas": alphas,
-                    "adjusted betas": adjusted_betas,
-                    "systematic risk's": systematic_risks,
-                    "Firm-Specific Risk's": firm_specific_risks,
-                    "market-index-risk": market_index_risk,
-                    "total-risks": total_risks,
-                }
-            )
+    def get_systematic_risks(self) -> dict[str, float]:
+        """Systematic risk: β² × σ²_m."""
+        betas = self.get_betas()
+        market_var = self.get_market_variance()
+        return {t: beta ** 2 * market_var for t, beta in betas.items()}
 
-        return results
+    def get_firm_specific_risks(self) -> dict[str, float]:
+        """Firm-specific risk: variance of residuals."""
+        return {t: float(np.var(model.resid)) for t, model in self._models.items()}
+
+    def get_total_risks(self) -> dict[str, float]:
+        """Total risk: systematic + firm-specific."""
+        systematic = self.get_systematic_risks()
+        firm_specific = self.get_firm_specific_risks()
+        return {t: systematic[t] + firm_specific[t] for t in systematic}

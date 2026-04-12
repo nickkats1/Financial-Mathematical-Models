@@ -1,59 +1,75 @@
-from tools.config import load_config
+from pypfopt import expected_returns, risk_models, EfficientFrontier
+import numpy as np
+import pandas as pd
 
 
-from pypfopt import expected_returns, EfficientFrontier, risk_models
+# --- Get expected returns, Volatility, Sharpe Ratio ---
+
+# --- Expected returns ---
+def get_expected_returns(dataframe: pd.DataFrame) -> pd.Series:
+    """Get Expected Returns from dataframe"""
+    return expected_returns.mean_historical_return(dataframe)
 
 
-from scripts.data_ingestion import DataIngestion
+# --- Volatility ---
+
+def get_volatility(dataframe: pd.DataFrame) -> pd.Series:
+    """Get Volatility from dataframe"""
+    return risk_models.sample_cov(dataframe)
 
 
-from typing import Any, Dict
+# --- get efficient frontier ---
 
-class MPT:
-    """Modern Portfolio Theory class."""
+
+def get_efficient_frontier(dataframe: pd.DataFrame) -> EfficientFrontier:
+    """get efficient frontier from dataframe."""
+    
+    # mu is expected returns
+    
+    mu = get_expected_returns(dataframe)
+    
+    # S is volatility
+    
+    S = get_volatility(dataframe)
+    
+    return EfficientFrontier(mu, S)
+
+
+# --- Get Portfolio Weights ---
+
+def get_weights(ef: EfficientFrontier, risk_free_rate: float) -> pd.Series:
+    """Get Weights from optimized portfolio and return them."""
+    
+    ef = EfficientFrontier(ef)
+    
+    weights = ef.max_sharpe(risk_free_rate)
+    
+    # clean weights
+    
+    weights = ef.clean_weights()
+    
+    return weights
+    
+
+# --- Sharpe Ratio ---
+
+def sharpe_ratio(
+    mu: expected_returns,
+    S: risk_models,
+    risk_free_rate: float
+) -> float:
+    """Get Sharpe Ratio manually"""
+    
+    return (mu - risk_free_rate) / S
+
+
+
+
+
+
+
+
 
     
-    def __init__(self,config: dict, data_ingestion: DataIngestion | None = None):
-        """
-        Initializing class for Modern Portfolio Theory.
-        
-        Args:
-            config (dict): configuration file.
-            data_ingestion (DataIngestion): DataIngestion module to extract data from yfinance API.
-        
-        """
-        self.config = config or load_config()
-        self.data_ingestion = data_ingestion or DataIngestion(self.config)
 
     
-    
-    def portfolio_metrics(self) -> Dict[str,Any]:
-        """
-        Metrics for portfolio optimization using pyportfolioopt.
-
-        Returns:
-            Performance (Dict[str,Any]): a dictionary containing a list of items with weights, Expected Returns, Volatility,
-            Efficient Frontier, and the sharpe ratio
-        """
-        # data from data ingestion
-        all_prices = self.data_ingestion.fetch_all_prices()
-        
-
-        mu = expected_returns.mean_historical_return(all_prices)
-        S = risk_models.sample_cov(all_prices)
-        ef = EfficientFrontier(mu,S)
-            
-
-        weights = ef.max_sharpe()
-        weights = ef.clean_weights()
-
-
-            
-        expected_annual_return, annual_volatility, sharpe_ratio = ef.portfolio_performance(verbose=True)
-        performance = {
-            "weights": weights,
-            "expected_annual_return":expected_annual_return,
-            "Annual Volatility":annual_volatility,
-            "Sharpe Ratio":sharpe_ratio
-        }
-        return performance

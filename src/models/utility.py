@@ -1,62 +1,22 @@
-import numpy as np
-
-
-from scripts.returns import Returns
-
-
-from tools.config import load_config
-
-
 import pandas as pd
+from pypfopt import expected_returns, risk_models
 
 
-class Utility:
-    """A class to Maximize Utility of the Expected returns:
-    U = E(r) - A * 1/2 * var(r).
+def get_utility(dataframe: pd.DataFrame, risk_aversion: float, scaling_factor: float = 0.5):
+    """Get utility of investor based on level of risk aversion.
+    
+    Args:
+        dataframe: dataframe of prices from yfinance.
+        risk_aversion: Level of risk aversion from investor.
+        scaling_factor: 0.5, for: U = Expected Returns - 0.5 - variance of returns.
+    
+    Returns:
+        Utility (U): The investors level of Utility based on level of risk aversion.
     """
     
-    
-    def __init__(self, config: dict, returns: Returns | None=None):
-        """__init__ Utility class.
 
-        Args:
-            config (dict): config.py from config.yaml consisting of tickers and file paths.
-            returns (Returns | None, optional): Returns module to fetch market returns from yfinance.
-        
-        Returns:
-            U (pd.Series): Utility of the individuals risk-aversion.
-        """
-        
-        self.config = config or load_config()
-        self.returns = returns or Returns(self.config)
-        
-        
-    def run(self, A=3.0) -> pd.Series:
-        """Run Utility class.
-        
-        Args:
-            A (float): The level of the investors risk-aversion.
-        
-        
-        Returns:
-            U (pd.Series): A series of Utility values based on expected returns, risk, risk-aversion and scaling factor.
-        """
-        
-        # returns from 'Returns' object
-        returns = self.returns.get_all_returns()
-        
-        # Expected Returns
-        
-        er = np.mean(returns)
-        
-        # Variance (Volatility) or returns.
-        
-        var = np.var(returns)
-        
-        # Utility function
-        
-        U = er - (0.5) * A * var
-        
-        print(f"Utility derived from returns and risk: {U}")
-        
-        return U
+    
+    er = expected_returns.mean_historical_return(dataframe)
+    variance_of_returns = risk_models.sample_cov(dataframe)
+    u = er - scaling_factor * risk_aversion * variance_of_returns
+    return u
