@@ -1,7 +1,5 @@
 #ignore .env
 *.env
-#ignore ides
-
 
 *.pyc
 __pycache__/
@@ -34,11 +32,8 @@ defaults/
 *.tmp
 debug.log
 profile.prof
-*logs/
 
-# OS-Specific Files
-.DS_Store
-.Trash-*
+
 
 # Ignore build artifacts
 build/
@@ -61,6 +56,6 @@ Desktop.ini
 
 
 *.ini.bak
-*.ini
+
 
 

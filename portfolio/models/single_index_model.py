@@ -2,57 +2,48 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 
-
-from src import config
-from src.data.data_ingestion import DataIngestion
-
-
 class SingleIndexModel:
-    """Single Index Model (SIM) implementation.
+    """
+    Single Index Model (SIM) implementation.
 
     Regresses each asset's returns against the market (S&P 500)
     to decompose risk into systematic and firm-specific components.
     """
 
     def __init__(self):
-        self.config = config
-        self.ingestion = DataIngestion()
+        self.results = {}
+        self._market_returns = None
 
-        returns = self.ingestion.get_all_prices()
-        market_returns = self.ingestion.get_sp500_prices().squeeze()
-        shared_index = returns.index.intersection(market_returns.index)
-
-        self._stock_returns = returns.loc[shared_index]
-        self._market_returns = market_returns.loc[shared_index]
-
-        self._models: dict[str, sm.regression.linear_model.RegressionResultsWrapper] = {}
-        self._fit_all()
-
-
-    def _fit_all(self) -> None:
-        """Run OLS for each stock against the market."""
+    def get_models(
+        self,
+        tickers: list[str] | str,
+        market_ticker: str,
+        returns: pd.DataFrame
+    ) -> dict[str, sm.regression.linear_model.RegressionResultsWrapper]:
+        """
+        Get OLS models for each ticker regressed on the market.
+        """
+        self._market_returns = returns[market_ticker]
         X = sm.add_constant(self._market_returns)
-        for ticker in self._stock_returns.columns:
-            self._models[ticker] = sm.OLS(
-                endog=self._stock_returns[ticker],
-                exog=X,
-            ).fit()
-
+        models = {}
+        for ticker in tickers:
+            y = returns[ticker]
+            model = sm.OLS(y, X).fit()
+            models[ticker] = model
+        self.results = models
+        return models
 
     def get_betas(self) -> dict[str, float]:
         """Raw OLS betas for each stock."""
-        return {t: model.params.iloc[1] for t, model in self._models.items()}
-
+        return {t: model.params.iloc[1] for t, model in self.results.items()}
 
     def get_alphas(self) -> dict[str, float]:
         """OLS intercepts (alphas) for each stock."""
-        return {t: model.params.iloc[0] for t, model in self._models.items()}
-
+        return {t: model.params.iloc[0] for t, model in self.results.items()}
 
     def get_residuals(self) -> dict[str, pd.Series]:
         """OLS residuals (error terms) for each stock."""
-        return {t: model.resid for t, model in self._models.items()}
-
+        return {t: model.resid for t, model in self.results.items()}
 
     def get_market_variance(self) -> float:
         """Variance of the market returns."""
@@ -66,7 +57,7 @@ class SingleIndexModel:
 
     def get_firm_specific_risks(self) -> dict[str, float]:
         """Firm-specific risk: variance of residuals."""
-        return {t: float(np.var(model.resid)) for t, model in self._models.items()}
+        return {t: float(np.var(model.resid)) for t, model in self.results.items()}
 
     def get_total_risks(self) -> dict[str, float]:
         """Total risk: systematic + firm-specific."""

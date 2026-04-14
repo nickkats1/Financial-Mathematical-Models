@@ -1,6 +1,6 @@
 import pandas as pd
 import yfinance as yf
-from src import config
+from portfolio import config
 
 
 

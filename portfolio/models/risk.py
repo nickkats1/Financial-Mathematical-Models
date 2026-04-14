@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 
-from src import config
+from portfolio import config
 
 
 # --- Value at Risk ---

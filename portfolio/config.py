@@ -77,21 +77,18 @@ sp500_ticker: str = "^GSPC"
 all_tickers: list[str] = [
     *stock_tickers, *etf_tickers,
     *bond_tickers, *crypto_tickers,
+    sp500_ticker
 ]
 
 
 
 # --- date range ---
 
-start_date: str = "2024-12-01"
+start_date: str = "2022-12-01"
 
-end_date: str = "2026-04-08"
+end_date: str = "2026-04-12"
 
 # --- Misc ---
-
-risk_free_rate: float = 0.005
-
-# CI for 95% VaR
 
 var_95: float = 0.95
 
@@ -99,9 +96,6 @@ var_95: float = 0.95
 
 var_99: float = 0.99
 
-
-# A is the level of risk aversion
-A: float = 3.0
 
 
 
