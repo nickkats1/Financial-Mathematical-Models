@@ -2,7 +2,7 @@ import pandas as pd
 import yfinance as yf
 from portfolio import config
 
-
+from typing import List
 
 class DataIngestion:
     """Fetch interface to yfinance for price and return data."""
@@ -10,7 +10,7 @@ class DataIngestion:
     def __init__(self) -> None:
         self.config = config
 
-    def _fetch(self, tickers: list[str] | str) -> pd.DataFrame:
+    def _fetch(self, tickers: List[str] | str) -> pd.DataFrame:
         """Fetch prices from yfinance"""
         tickers_list = sorted(tickers) if isinstance(tickers, list) else [tickers]
 
