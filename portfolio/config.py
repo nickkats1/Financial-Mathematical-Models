@@ -1,8 +1,8 @@
-# --- Config ----
+from typing import List
 
 
 # --stock tickers ---
-stock_tickers: list[str] = [
+stock_tickers: List[str] = [
     "INTC", "HOLX", "NVDA",
     "NOK", "PLTR", "PLUG",
     "NIO", "CRWV", "EOSE",
@@ -26,7 +26,7 @@ stock_tickers: list[str] = [
 
 # --- etf_tickers ---
 
-etf_tickers: list[str] = [
+etf_tickers: List[str] = [
     "ZCSH", "BEG", "LABX",
     "GTAO", "CRMU", "CIFU",
     "EOSU", "MVLL", "CRMX",
@@ -39,13 +39,13 @@ etf_tickers: list[str] = [
     "AVGU", "SMCL",
     "IREX", "AMUU", "IRE",
     "AMDL", "COZX",
-    "QUBX", "TEMT", "QQQ"
+    "QUBX", "TEMT", "QQQ", "FNGU"
 ]
 
 
 # --- crypto tickers ---
 
-crypto_tickers: list[str] = [
+crypto_tickers: List[str] = [
     "USDT-USD", "MPRO31258-USD", "BTC-USD",
     "ETH-USD", "USDC-USD", "SOL-USD",
     "JU-USD", "XRP-USD", "TAO22974-USD",
@@ -60,7 +60,7 @@ crypto_tickers: list[str] = [
 
 # --- Bond Tickers ---
 
-bond_tickers: list[str] = [
+bond_tickers: List[str] = [
     "^IRX", "^FVX", "^TNX",
     "^TYX"
 ]
@@ -74,7 +74,7 @@ sp500_ticker: str = "^GSPC"
 
 # --- All Tickers ---
 
-all_tickers: list[str] = [
+all_tickers: List[str] = [
     *stock_tickers, *etf_tickers,
     *bond_tickers, *crypto_tickers,
     sp500_ticker
@@ -86,7 +86,7 @@ all_tickers: list[str] = [
 
 start_date: str = "2022-12-01"
 
-end_date: str = "2026-04-12"
+end_date: str = "2026-04-30"
 
 # --- Misc ---
 
