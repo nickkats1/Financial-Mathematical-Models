@@ -1,102 +1,91 @@
+"""Project configuration: tickers, date range, and default confidence levels.
+
+All values defined here are module-level defaults consumed by the
+``portfolio.data`` and ``portfolio.models`` subpackages. They can be
+imported and overridden in notebooks or downstream scripts.
+
+Ticker-list policy
+------------------
+Every symbol in this file is fetched through :func:`yfinance.download`.
+Unknown or illiquid symbols are silently dropped by yfinance and bloat
+the optimisation universe, so the lists below are kept to recognisable,
+high-liquidity instruments. Add to them as needed for your own work.
+"""
+
 from typing import List
 
 
-# --stock tickers ---
+# --- Equity tickers -----------------------------------------------------------
+
 stock_tickers: List[str] = [
-    "INTC", "HOLX", "NVDA",
-    "NOK", "PLTR", "PLUG",
-    "NIO", "CRWV", "EOSE",
-    "TSLA", "AMZN", "GRAB",
-    "SNAP", "MARA", "NU",
-    "WULF", "SOFI", "MU",
-    "BBD", "VG", "NOW",
-    "ABEV", "ONDS", "AAL",
-    "T", "APLD", "BMNR",
-    "PATH", "RKT", "NFLX",
-    "OPEN", "PBR", "SMCI",
-    "CIFR", "MRVL", "F",
-    "ORCL", "GGB", "AMD",
-    "STLA", "IREN", "MSFT",
-    "VZ", "FSLY", "GOOGL",
-    "CCL", "HOOD", "BB",
-    "NKE", "ET", "META",
-    "MCD", "TGT", "WMT"
-    ]
+    "AAPL", "MSFT", "GOOGL", "AMZN", "META",
+    "NVDA", "TSLA", "AMD", "INTC", "MU",
+    "NFLX", "ORCL", "CRM", "ADBE", "AVGO",
+    "JPM", "BAC", "WFC", "GS", "MS",
+    "V", "MA", "PYPL", "SOFI", "HOOD",
+    "WMT", "TGT", "COST", "MCD", "NKE",
+    "KO", "PEP", "PG", "JNJ", "PFE",
+    "T", "VZ", "DIS", "F", "GM",
+    "BA", "CAT", "GE", "XOM", "CVX",
+    "PLTR", "SNAP", "AAL", "CCL", "RKT",
+    "SMCI", "MARA",
+]
 
 
-# --- etf_tickers ---
+# --- ETF tickers --------------------------------------------------------------
 
 etf_tickers: List[str] = [
-    "ZCSH", "BEG", "LABX",
-    "GTAO", "CRMU", "CIFU",
-    "EOSU", "MVLL", "CRMX",
-    "VFPAF", "VOYX", "MRVU",
-    "LUNL", "ARMG", "CSEX",
-    "ODOT", "USGG", "PLU",
-    "AVGX", "APLX", "CWVX",
-    "WULX", "USAX", "AVGG",
-    "PBRG", "AVL",
-    "AVGU", "SMCL",
-    "IREX", "AMUU", "IRE",
-    "AMDL", "COZX",
-    "QUBX", "TEMT", "QQQ", "FNGU"
+    "SPY", "QQQ", "IWM", "DIA", "VTI",
+    "VOO", "VEA", "VWO", "EFA", "EEM",
+    "AGG", "BND", "TLT", "IEF", "SHY",
+    "LQD", "HYG", "TIP",
+    "GLD", "SLV", "USO", "UNG",
+    "XLK", "XLF", "XLE", "XLV", "XLY", "XLP", "XLI", "XLU", "XLB",
+    "ARKK", "FNGU",
 ]
 
 
-# --- crypto tickers ---
+# --- Cryptocurrency tickers ---------------------------------------------------
 
 crypto_tickers: List[str] = [
-    "USDT-USD", "MPRO31258-USD", "BTC-USD",
-    "ETH-USD", "USDC-USD", "SOL-USD",
-    "JU-USD", "XRP-USD", "TAO22974-USD",
-    "BNB-USD", "DOGE-USD", "USD136148-USD",
-    "WETH-USD", "ZEC-USD", "UP39665-USD",
-    "LINK-USD", "TRX-USD", "SOL16116-USD",
-    "ADA-USD", "CBBTC32994-USD", "QUQ-USD",
-    "SUI20947-USD", "USDT39520-USD",
-    "RAVE38967-USD", "PEPE24478-USD", "HYPE32196-USD"
+    "BTC-USD", "ETH-USD", "USDT-USD", "USDC-USD",
+    "BNB-USD", "SOL-USD", "XRP-USD", "ADA-USD",
+    "DOGE-USD", "TRX-USD", "LINK-USD", "ZEC-USD",
 ]
 
 
-# --- Bond Tickers ---
+# --- Treasury bond tickers ----------------------------------------------------
 
 bond_tickers: List[str] = [
-    "^IRX", "^FVX", "^TNX",
-    "^TYX"
+    "^IRX", "^FVX", "^TNX", "^TYX",
 ]
 
-# --- SP&500 Ticker
+
+# --- Market index ticker (used as the market proxy in the Single Index Model)
 
 sp500_ticker: str = "^GSPC"
 
 
-
-
-# --- All Tickers ---
+# --- Combined universe --------------------------------------------------------
 
 all_tickers: List[str] = [
-    *stock_tickers, *etf_tickers,
-    *bond_tickers, *crypto_tickers,
-    sp500_ticker
+    *stock_tickers,
+    *etf_tickers,
+    *bond_tickers,
+    *crypto_tickers,
+    sp500_ticker,
 ]
 
 
-
-# --- date range ---
+# --- Date range used for all yfinance fetches ---------------------------------
+# These are notebook-level defaults only. The Flask app always supplies an
+# explicit user-picked range and never falls through to these values.
 
 start_date: str = "2022-12-01"
-
 end_date: str = "2026-04-30"
 
-# --- Misc ---
 
-var_95: float = 0.95
+# --- Default confidence levels for VaR / CVaR ---------------------------------
 
-# CI for 99%
-
-var_99: float = 0.99
-
-
-
-
-
+confidence_level_95: float = 0.95
+confidence_level_99: float = 0.99

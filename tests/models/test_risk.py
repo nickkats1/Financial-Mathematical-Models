@@ -1,27 +1,33 @@
-import numpy as np
+"""Tests for :mod:`portfolio.models.risk`."""
 
-from portfolio.models.risk import get_var, get_cvar
+import math
 
+import pandas as pd
+import pytest
+
+from portfolio.models.risk import get_cvar, get_var
 
 
 class TestRisk:
-    """Test Value at Risk and Conditional Value at Risk"""
-    def test_var(self, fake_prices):
-        """Test Value At Risk"""
-        
-        var = get_cvar(fake_prices)
-        
-        
-        assert np.dtype(var) == float
-        
-    def test_var_cvar(self, fake_prices):
-        """Test that cvar is less than var"""
-        
+    """Tests for Value at Risk and Conditional Value at Risk."""
+
+    def test_var_is_finite_float(self, fake_prices):
+        var = get_var(fake_prices)
+        assert isinstance(var, float)
+        assert math.isfinite(var)
+
+    def test_cvar_is_at_most_var(self, fake_prices):
+        """CVaR is the mean of the left tail, so it must be <= VaR."""
         var = get_var(fake_prices)
         cvar = get_cvar(fake_prices)
-        
-        
-        assert cvar < var
-        
+        assert cvar <= var
 
-        
+    def test_invalid_confidence_raises(self, fake_prices):
+        with pytest.raises(ValueError, match="confidence must be in"):
+            get_var(fake_prices, confidence=0.0)
+        with pytest.raises(ValueError, match="confidence must be in"):
+            get_cvar(fake_prices, confidence=1.0)
+
+    def test_empty_prices_raises(self):
+        with pytest.raises(ValueError, match="prices is empty"):
+            get_var(pd.DataFrame())

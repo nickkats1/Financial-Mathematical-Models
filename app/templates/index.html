@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Portfolio Analytics — New Analysis{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <h1>Portfolio Analytics</h1>
+    <p>
+      Pick your own price universe and date range. The app fetches
+      historical prices from Yahoo Finance and computes the
+      <strong>max-Sharpe portfolio</strong>, <strong>VaR / CVaR</strong>,
+      <strong>mean-variance utility</strong>, and the
+      <strong>Single Index Model</strong> (alpha, beta, systematic vs.
+      firm-specific risk) across your chosen universe.
+    </p>
+  </section>
+
+  {% if error %}
+    <div class="alert alert-error" role="alert">
+      <strong>Could not run analysis:</strong> {{ error }}
+    </div>
+  {% endif %}
+
+  <form class="analysis-form" method="post" action="{{ url_for('main.analyze') }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row">
+      <label for="tickers">Tickers</label>
+      <input
+        type="text"
+        id="tickers"
+        name="tickers"
+        value="{{ defaults.tickers }}"
+        placeholder="AAPL, MSFT, GOOGL"
+      >
+      <small>
+        Comma- or space-separated. Optional if you tick at least one
+        asset class below — combined universe must have at least two symbols.
+      </small>
+    </div>
+
+    <fieldset class="form-row">
+      <legend>Asset classes (optional)</legend>
+      <small>
+        Tick any combination — selected presets are merged with the symbols
+        above and fed into the same Sharpe-ratio optimisation.
+      </small>
+      <div class="checkbox-grid">
+        {% for key, label in asset_class_labels.items() %}
+          <label class="checkbox">
+            <input
+              type="checkbox"
+              name="asset_classes"
+              value="{{ key }}"
+              {% if key in selected_asset_classes %}checked{% endif %}
+            >
+            <span>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <div class="form-grid">
+      <div class="form-row">
+        <label for="start_date">Start date</label>
+        <input
+          type="date"
+          id="start_date"
+          name="start_date"
+          value="{{ defaults.start_date }}"
+          required
+        >
+      </div>
+      <div class="form-row">
+        <label for="end_date">End date</label>
+        <input
+          type="date"
+          id="end_date"
+          name="end_date"
+          value="{{ defaults.end_date }}"
+          required
+        >
+      </div>
+      <div class="form-row">
+        <label for="risk_free_rate">Risk-free rate</label>
+        <input
+          type="number"
+          id="risk_free_rate"
+          name="risk_free_rate"
+          value="{{ defaults.risk_free_rate }}"
+          step="0.001"
+          min="0"
+          max="1"
+          required
+        >
+        <small>Annualised, decimal (e.g. <code>0.04</code> = 4%).</small>
+      </div>
+      <div class="form-row">
+        <label for="risk_aversion">Risk aversion (A)</label>
+        <input
+          type="number"
+          id="risk_aversion"
+          name="risk_aversion"
+          value="{{ defaults.risk_aversion }}"
+          step="0.1"
+          required
+        >
+        <small>Positive = risk-averse, 0 = neutral, negative = risk-loving.</small>
+      </div>
+      <div class="form-row">
+        <label for="market_ticker">Market proxy</label>
+        <input
+          type="text"
+          id="market_ticker"
+          name="market_ticker"
+          value="{{ defaults.market_ticker }}"
+        >
+        <small>Used as the market factor for the Single Index Model (default <code>^GSPC</code>).</small>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-primary">Run analysis</button>
+  </form>
+{% endblock %}

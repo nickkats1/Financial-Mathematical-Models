@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    image: financial-mathematical-models:latest
+    container_name: financial-mathematical-models
+    ports:
+      - "8000:8000"
+    environment:
+      # Required when FLASK_ENV=production. Generate with:
+      #   python -c 'import secrets; print(secrets.token_hex(32))'
+      # The app refuses to start in production if this is unset or empty.
+      FLASK_SECRET_KEY: "${FLASK_SECRET_KEY:?FLASK_SECRET_KEY must be set in the host environment or .env file}"
+      FLASK_ENV: "${FLASK_ENV:-production}"
+    restart: unless-stopped

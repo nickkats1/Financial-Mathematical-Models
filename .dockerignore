@@ -1,0 +1,36 @@
+# Version control
+.git
+.github
+.gitignore
+
+# Python build / virtualenv artifacts
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.mypy_cache
+venv
+env
+.virtualenv
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Local config and secrets
+*.env
+
+# Notebooks (run locally, not needed in the container)
+notebooks
+*.ipynb
+.ipynb_checkpoints
+
+# Tests are not needed in the runtime image
+tests
+pytest.ini
+
+# Docs / metadata
+README.md
+LICENSE
