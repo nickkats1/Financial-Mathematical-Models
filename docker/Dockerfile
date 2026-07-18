@@ -1,8 +1,4 @@
 # syntax=docker/dockerfile:1.6
-#
-# Production image for the Financial Mathematical Models web app.
-# Serves the Flask app via gunicorn behind port 8000.
-
 FROM python:3.13-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -10,7 +6,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# System packages required by numpy / scipy wheels and yfinance's HTTP stack.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         build-essential \
@@ -20,17 +15,16 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Install Python dependencies first so they cache independently of source changes.
-COPY requirements.txt ./
+COPY requirements.txt pyproject.toml ./
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
-# Copy application source.
 COPY app ./app
-COPY portfolio ./portfolio
+COPY src ./src
 COPY wsgi.py ./
 
-# Run as a non-root user.
+RUN pip install .
+
 RUN useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app
 USER appuser

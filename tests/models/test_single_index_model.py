@@ -1,93 +1,123 @@
-import pytest
-from unittest.mock import Mock, patch
-import statsmodels.api as sm
-import pandas as pd
+"""Tests for :class:`portfolio.models.single_index_model.SingleIndexModel`."""
+
 import numpy as np
+import pandas as pd
+import pytest
 
 from portfolio.models.single_index_model import SingleIndexModel
 
 
 @pytest.fixture
-def single_index_model():
+def returns():
+    """Synthetic daily returns for three assets plus a market proxy.
+
+    Each asset is generated as ``alpha + beta * market + noise`` so the
+    fitted betas are meaningful (not degenerate) and the risk
+    decomposition has a non-trivial systematic component.
+    """
+    rng = np.random.default_rng(seed=7)
+    n = 120
+    market = rng.normal(0.0004, 0.009, n)
+    dates = pd.bdate_range("2023-01-01", periods=n)
+    data = {
+        "AAPL": 0.0002 + 1.1 * market + rng.normal(0, 0.006, n),
+        "MSFT": 0.0001 + 0.9 * market + rng.normal(0, 0.005, n),
+        "KO": 0.0003 + 0.4 * market + rng.normal(0, 0.004, n),
+        "^GSPC": market,
+    }
+    return pd.DataFrame(data, index=dates)
+
+
+@pytest.fixture
+def model():
     return SingleIndexModel()
 
 
-class TestSingleIndexModel:
-    """Test Single Index Model"""
-    
-    def test_get_models(self, fake_prices, single_index_model, dummy_config):
-        """Test get models method"""
-        get_models = single_index_model.get_models(
-            tickers=dummy_config["all_tickers"],
-            market_ticker=dummy_config["sp500_ticker"],
-            returns=fake_prices
-        )
-        
-        assert get_models is not None
-        
-        assert isinstance(get_models, dict)
-        
-        assert "^GSPC" in get_models.keys()
-        assert "NVDA" in get_models.keys()
-        
-        expected_tickers = [
-            t for t in dummy_config['all_tickers'] if t in fake_prices.columns
-        ]
-        
-        assert set(expected_tickers) <= set(get_models.keys())
-        
-        
-    def test_get_model_methods(self, fake_prices, single_index_model, dummy_config):
-        """test methods derived from get_model"""
-        available_tickers = [
-            t for t in dummy_config['all_tickers'] if t in fake_prices.columns
-        ]
-    
-        # instance of get models.
+class TestGetModels:
+    def test_returns_dict_of_fitted_models(self, model, returns):
+        fitted = model.get_models(["AAPL", "MSFT"], "^GSPC", returns)
+        assert isinstance(fitted, dict)
+        assert set(fitted) == {"AAPL", "MSFT"}
+        assert fitted is model.results
 
-        single_index_model.get_models(
-            tickers=available_tickers,
-            market_ticker=dummy_config['sp500_ticker'],
-            returns=fake_prices
-        )
-        
-        # betas, alphas, residuals for testing
-        betas = single_index_model.get_betas()
-        alphas = single_index_model.get_alphas()
-        residuals = single_index_model.get_residuals()
-        systematic_risks = single_index_model.get_systematic_risks()
-        firm_specific_risk = single_index_model.get_firm_specific_risks()
-        total_risk = single_index_model.get_total_risks()
-        
-        assert isinstance(betas, dict)
-        assert isinstance(alphas, dict)
-        assert isinstance(residuals, dict)
-        assert isinstance(systematic_risks, dict)
-        assert isinstance(firm_specific_risk, dict)
-        assert isinstance(total_risk, dict)
-        
-        
-        
-        for ticker in available_tickers:
-            assert ticker in betas
-            assert ticker in alphas
-            assert ticker in residuals
-            assert ticker in systematic_risks
-            assert ticker in firm_specific_risk
-            assert ticker in total_risk
-            assert isinstance(betas[ticker], np.floating)
-            assert isinstance(alphas[ticker], np.floating)
+    def test_accepts_single_string_ticker(self, model, returns):
+        fitted = model.get_models("AAPL", "^GSPC", returns)
+        assert set(fitted) == {"AAPL"}
+
+    def test_missing_market_ticker_raises_keyerror(self, model, returns):
+        with pytest.raises(KeyError, match="market_ticker"):
+            model.get_models(["AAPL"], "NOPE", returns)
+
+    def test_missing_asset_ticker_raises_keyerror(self, model, returns):
+        with pytest.raises(KeyError, match="missing from returns"):
+            model.get_models(["AAPL", "ZZZZ"], "^GSPC", returns)
+
+
+class TestRequiresFit:
+    """Every accessor must raise before :meth:`get_models` is called."""
+
+    @pytest.mark.parametrize(
+        "method",
+        [
+            "get_betas",
+            "get_alphas",
+            "get_residuals",
+            "get_market_variance",
+            "get_systematic_risks",
+            "get_firm_specific_risks",
+            "get_total_risks",
+        ],
+    )
+    def test_accessor_before_fit_raises(self, model, method):
+        with pytest.raises(RuntimeError, match="call get_models"):
+            getattr(model, method)()
+
+
+class TestModelOutputs:
+    @pytest.fixture
+    def fitted(self, model, returns):
+        model.get_models(["AAPL", "MSFT", "KO"], "^GSPC", returns)
+        return model
+
+    def test_betas_are_finite_floats(self, fitted):
+        betas = fitted.get_betas()
+        assert set(betas) == {"AAPL", "MSFT", "KO"}
+        for beta in betas.values():
+            assert np.isfinite(beta)
+
+    def test_recovers_approximate_betas(self, fitted):
+        """The fitted betas should be close to the true generating betas."""
+        betas = fitted.get_betas()
+        assert betas["AAPL"] == pytest.approx(1.1, abs=0.25)
+        assert betas["MSFT"] == pytest.approx(0.9, abs=0.25)
+        assert betas["KO"] == pytest.approx(0.4, abs=0.25)
+
+    def test_alphas_and_residuals(self, fitted, returns):
+        alphas = fitted.get_alphas()
+        residuals = fitted.get_residuals()
+        for ticker in ("AAPL", "MSFT", "KO"):
+            assert np.isfinite(alphas[ticker])
             assert isinstance(residuals[ticker], pd.Series)
-            assert len(residuals[ticker]) == len(fake_prices)
-            assert len(residuals[ticker]) == len(fake_prices)
-            assert not np.isnan(betas[ticker])
-            assert not np.isinf(betas[ticker])
-            assert set(betas.keys()) == set(available_tickers)
-            assert np.isclose(
-                systematic_risks[ticker] + firm_specific_risk[ticker],
-                total_risk[ticker]
-            )
-            
-        
-        
+            assert len(residuals[ticker]) == len(returns)
 
+    def test_market_variance_is_positive(self, fitted, returns):
+        assert fitted.get_market_variance() == pytest.approx(
+            float(returns["^GSPC"].var(ddof=1))
+        )
+        assert fitted.get_market_variance() > 0.0
+
+    def test_risk_decomposition_adds_up(self, fitted):
+        systematic = fitted.get_systematic_risks()
+        firm = fitted.get_firm_specific_risks()
+        total = fitted.get_total_risks()
+        for ticker in systematic:
+            assert systematic[ticker] >= 0.0
+            assert firm[ticker] >= 0.0
+            assert np.isclose(systematic[ticker] + firm[ticker], total[ticker])
+
+    def test_market_regressed_on_itself_has_unit_beta(self, model, returns):
+        """Sanity check: regressing the market on itself yields beta ~ 1."""
+        model.get_models(["^GSPC"], "^GSPC", returns)
+        assert model.get_betas()["^GSPC"] == pytest.approx(1.0, abs=1e-9)
+        # All variance is systematic; firm-specific risk is ~0.
+        assert model.get_firm_specific_risks()["^GSPC"] == pytest.approx(0.0, abs=1e-12)

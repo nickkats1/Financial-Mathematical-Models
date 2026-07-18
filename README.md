@@ -26,6 +26,7 @@ without a real `FLASK_SECRET_KEY`.
 │   └── static/                # CSS + JavaScript (Chart.js bar chart)
 ├── notebooks/                 # Concept + EDA + API-demo notebooks
 │   ├── _data_ingestion.ipynb
+│   ├── _mpt.ipynb
 │   ├── _risk.ipynb
 │   ├── _single_index_model.ipynb
 │   └── _utility.ipynb
@@ -37,9 +38,10 @@ without a real `FLASK_SECRET_KEY`.
 │       ├── risk.py
 │       ├── single_index_model.py
 │       └── utility.py
-├── tests/                     # pytest suite (60+ tests, fully offline)
-├── Dockerfile
-├── docker-compose.yml
+├── tests/                     # pytest suite (120+ tests, 100% coverage, fully offline)
+├── docker/
+│   ├── Dockerfile
+│   └── docker-compose.yml
 ├── requirements.txt
 └── wsgi.py                    # gunicorn entry point
 ```
@@ -47,11 +49,18 @@ without a real `FLASK_SECRET_KEY`.
 ## Installation
 
 ```bash
-git clone https://github.com/your-user/Financial-Mathematical-Models.git
+git clone https://github.com/nickkats1/Financial-Mathematical-Models.git
 cd Financial-Mathematical-Models
 python -m venv venv
 source venv/bin/activate            # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt     # runtime deps for the library + web app
+```
+
+Optional extras:
+
+```bash
+pip install -e '.[dev]'             # pytest, ruff, mypy — to run the test suite
+pip install -e '.[notebooks]'       # jupyter, matplotlib, seaborn, scikit-learn
 ```
 
 ## Quickstart — the library
@@ -142,11 +151,11 @@ gunicorn --bind 0.0.0.0:8000 --workers 2 wsgi:application
 
 ```bash
 # Single container
-docker build -t financial-mathematical-models .
+docker build -f docker/Dockerfile -t financial-mathematical-models .
 docker run --rm -p 8000:8000 -e FLASK_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')" financial-mathematical-models
 
 # Or via docker compose — requires FLASK_SECRET_KEY in the host env or a .env file
-FLASK_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')" docker compose up --build
+FLASK_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')" docker compose -f docker/docker-compose.yml up --build
 ```
 
 The app then serves at <http://localhost:8000/>.
@@ -154,11 +163,15 @@ The app then serves at <http://localhost:8000/>.
 ## Running the tests
 
 ```bash
-pytest
+pip install -e '.[dev]'
+pytest                      # or: pytest --cov --cov-report=term-missing
+ruff check .                # lint
+mypy                        # static type check
 ```
 
 The test suite is fully offline — every yfinance call is mocked — so it runs
-in well under two seconds.
+in a few seconds, and covers 100% of the library and web-app code. Continuous
+integration runs the same lint / type-check / test steps on Python 3.11–3.13.
 
 ## Mathematical background
 
@@ -217,4 +230,4 @@ that threshold. CVaR is a coherent risk measure; VaR is not.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT

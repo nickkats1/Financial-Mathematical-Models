@@ -47,3 +47,18 @@ class TestPortfolioMetrics:
         result = portfolio_metrics(synthetic_prices, risk_free_rate=0.02)
         for ticker, weight in result["weights"].items():
             assert weight >= 0.0, f"{ticker} has negative weight {weight}"
+
+
+class TestPortfolioMetricsValidation:
+    def test_rejects_empty_frame(self):
+        with pytest.raises(ValueError, match="at least one asset column"):
+            portfolio_metrics(pd.DataFrame(), risk_free_rate=0.02)
+
+    def test_rejects_none(self):
+        with pytest.raises(ValueError, match="at least one asset column"):
+            portfolio_metrics(None, risk_free_rate=0.02)
+
+    def test_rejects_single_observation(self):
+        one_row = pd.DataFrame({"A": [100.0], "B": [50.0]})
+        with pytest.raises(ValueError, match="at least two observations"):
+            portfolio_metrics(one_row, risk_free_rate=0.02)

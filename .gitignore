@@ -10,6 +10,7 @@ __pycache__/
 *.dll
 *.egg-info/
 *.pytest_cache
+*.pyc
 
 # Virtual Environments / ect.
 *.vscode
@@ -22,6 +23,8 @@ venv.bak/
 backups/
 defaults/
 *venv
+venv*/
+.venv/
 
 # Jupyter Notebook ect
 .virtual_documents/
@@ -32,6 +35,15 @@ defaults/
 *.tmp
 debug.log
 profile.prof
+
+# Test / coverage / tooling artifacts
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
 
 
 

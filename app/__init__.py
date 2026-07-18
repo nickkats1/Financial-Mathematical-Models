@@ -19,15 +19,7 @@ csrf = CSRFProtect()
 
 
 def _resolve_secret_key(test_config: dict | None) -> str:
-    """Pick a SECRET_KEY appropriate for the current environment.
-
-    - Tests / explicit ``TESTING`` config: any value is fine; we generate
-      an ephemeral one.
-    - Production (``FLASK_ENV=production``): refuse to start if
-      ``FLASK_SECRET_KEY`` is unset or still the dev placeholder.
-    - Otherwise: fall back to the env var, or to a noisy dev placeholder
-      so local development still works.
-    """
+    """Ephemeral key for tests; require FLASK_SECRET_KEY in production; else dev placeholder."""
     if test_config is not None and test_config.get("TESTING"):
         return secrets.token_hex(32)
 
@@ -47,18 +39,14 @@ def _resolve_secret_key(test_config: dict | None) -> str:
 
 
 def create_app(test_config: dict | None = None) -> Flask:
-    """Create and configure a Flask application instance.
-
-    Args:
-        test_config: Optional config overrides for testing.
-
-    Returns:
-        A configured :class:`flask.Flask` instance.
-    """
+    """Create and configure a Flask application instance."""
     app = Flask(__name__, instance_relative_config=False)
     app.config.from_mapping(
         SECRET_KEY=_resolve_secret_key(test_config),
         WTF_CSRF_TIME_LIMIT=None,
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=os.environ.get("FLASK_ENV", "").lower() == "production",
     )
     if test_config is not None:
         app.config.update(test_config)
@@ -69,6 +57,23 @@ def create_app(test_config: dict | None = None) -> Flask:
         app.config["WTF_CSRF_ENABLED"] = False
 
     csrf.init_app(app)
+
+    @app.after_request
+    def set_security_headers(response):
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "script-src 'self' https://cdn.jsdelivr.net; "
+            "style-src 'self'; "
+            "img-src 'self' data:; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'",
+        )
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        return response
 
     from app.routes import bp as main_bp
 

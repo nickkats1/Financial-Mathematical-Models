@@ -9,7 +9,8 @@ __pycache__
 *.egg-info
 .pytest_cache
 .mypy_cache
-venv
+venv*
+.venv
 env
 .virtualenv
 
@@ -29,7 +30,6 @@ notebooks
 
 # Tests are not needed in the runtime image
 tests
-pytest.ini
 
 # Docs / metadata
 README.md

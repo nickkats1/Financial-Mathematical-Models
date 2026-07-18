@@ -7,10 +7,10 @@ Modules:
     utility: Mean-variance utility for an investor with risk aversion ``A``.
 """
 
-from portfolio.models.mpt import portfolio_metrics
-from portfolio.models.risk import get_cvar, get_var
-from portfolio.models.single_index_model import SingleIndexModel
-from portfolio.models.utility import get_utility, max_utility
+from .mpt import portfolio_metrics
+from .risk import get_cvar, get_var
+from .single_index_model import SingleIndexModel
+from .utility import get_utility, max_utility
 
 __all__ = [
     "SingleIndexModel",

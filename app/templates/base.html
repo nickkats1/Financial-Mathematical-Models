@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Portfolio Analytics{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"
+      integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+      defer
+    ></script>
   </head>
   <body>
     <header class="site-header">
@@ -13,7 +19,7 @@
         <a class="brand" href="{{ url_for('main.index') }}">Financial Mathematical Models</a>
         <nav>
           <a href="{{ url_for('main.index') }}">New analysis</a>
-          <a href="https://github.com/" target="_blank" rel="noopener">Source</a>
+          <a href="https://github.com/nickkats1/Financial-Mathematical-Models" target="_blank" rel="noopener">Source</a>
         </nav>
       </div>
     </header>

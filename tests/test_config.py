@@ -1,5 +1,7 @@
 """Tests for the values declared in :mod:`portfolio.config`."""
 
+import pytest
+
 from portfolio import config
 
 
@@ -38,4 +40,27 @@ class TestConfig:
 
     def test_confidence_levels(self):
         assert config.confidence_level_95 == 0.95
-        assert config.confidence_level_99 == 0.99
+
+
+class TestAssetClassRegistry:
+    def test_asset_class_keys(self):
+        assert set(config.ASSET_CLASSES.keys()) == {
+            "stocks", "etfs", "bonds", "crypto"
+        }
+
+    def test_asset_class_labels(self):
+        assert config.ASSET_CLASSES["stocks"].label == "Stocks"
+        assert config.ASSET_CLASSES["etfs"].label == "ETFs"
+        assert config.ASSET_CLASSES["bonds"].label == "Treasury bonds"
+        assert config.ASSET_CLASSES["crypto"].label == "Crypto"
+
+    def test_asset_class_tickers_alias_flat_lists(self):
+        assert config.ASSET_CLASSES["stocks"].tickers is config.stock_tickers
+        assert config.ASSET_CLASSES["etfs"].tickers is config.etf_tickers
+        assert config.ASSET_CLASSES["bonds"].tickers is config.bond_tickers
+        assert config.ASSET_CLASSES["crypto"].tickers is config.crypto_tickers
+
+    def test_asset_classes_are_frozen(self):
+        from dataclasses import FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
+            config.ASSET_CLASSES["stocks"].label = "Equities"

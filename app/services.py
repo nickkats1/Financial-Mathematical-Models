@@ -1,14 +1,10 @@
-"""Service layer that wires the form input to the portfolio models.
+"""Service layer that wires the form input to the portfolio models."""
 
-Provides:
-    - :func:`parse_tickers` and :func:`parse_form` for input validation,
-    - :class:`AnalysisRequest` / :class:`AnalysisResult` dataclasses, and
-    - :func:`run_analysis` to execute the full pipeline.
-"""
-
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, List, Mapping
+from typing import TypedDict
 
 import pandas as pd
 
@@ -28,17 +24,14 @@ MIN_TICKERS = 2
 MAX_TICKERS = 200
 DEFAULT_MARKET_TICKER = "^GSPC"
 
-ASSET_CLASS_TICKERS: Dict[str, List[str]] = {
-    "stocks": config.stock_tickers,
-    "etfs": config.etf_tickers,
-    "bonds": config.bond_tickers,
-    "crypto": config.crypto_tickers,
+# Yahoo Finance symbols: letters/digits plus . - = ^ (e.g. BRK.B, BTC-USD, ^GSPC, CL=F).
+_TICKER_RE = re.compile(r"^[A-Z0-9.^=-]{1,20}$")
+
+ASSET_CLASS_TICKERS: dict[str, list[str]] = {
+    key: ac.tickers for key, ac in config.ASSET_CLASSES.items()
 }
-ASSET_CLASS_LABELS: Dict[str, str] = {
-    "stocks": "Stocks",
-    "etfs": "ETFs",
-    "bonds": "Treasury bonds",
-    "crypto": "Crypto",
+ASSET_CLASS_LABELS: dict[str, str] = {
+    key: ac.label for key, ac in config.ASSET_CLASSES.items()
 }
 
 
@@ -46,63 +39,53 @@ ASSET_CLASS_LABELS: Dict[str, str] = {
 class AnalysisRequest:
     """Validated, immutable inputs from the analysis form."""
 
-    tickers: List[str]
+    tickers: list[str]
     start_date: str
     end_date: str
     risk_free_rate: float
     risk_aversion: float
     market_ticker: str
-    asset_classes: List[str]
+    asset_classes: list[str]
 
 
 @dataclass(frozen=True)
 class AnalysisResult:
     """Aggregate analytics computed for an :class:`AnalysisRequest`."""
 
-    tickers: List[str]
+    tickers: list[str]
     start_date: str
     end_date: str
     risk_free_rate: float
     risk_aversion: float
     market_ticker: str
-    asset_classes: List[str]
-    dropped_tickers: List[str]
+    asset_classes: list[str]
+    dropped_tickers: list[str]
     market_proxy_available: bool
     expected_annual_return: float
     annual_volatility: float
     sharpe_ratio: float
-    weights: Dict[str, float]
+    weights: dict[str, float]
     var_90: float
     cvar_90: float
     var_95: float
     cvar_95: float
     var_99: float
     cvar_99: float
-    utility: Dict[str, float]
-    max_utility: Dict[str, float]
+    utility: dict[str, float]
+    max_utility: dict[str, float]
     market_variance: float
-    alphas: Dict[str, float]
-    betas: Dict[str, float]
-    systematic_risks: Dict[str, float]
-    firm_specific_risks: Dict[str, float]
-    total_risks: Dict[str, float]
-    r_squared: Dict[str, float]
+    alphas: dict[str, float]
+    betas: dict[str, float]
+    systematic_risks: dict[str, float]
+    firm_specific_risks: dict[str, float]
+    total_risks: dict[str, float]
+    r_squared: dict[str, float]
 
 
-def parse_tickers(raw: str) -> List[str]:
-    """Parse a comma- or whitespace-separated string of tickers.
+def parse_tickers(raw: str) -> list[str]:
+    """Parse comma/whitespace-separated tickers into a de-duplicated upper-case list.
 
-    Args:
-        raw: Free-form user input, e.g. ``"AAPL, MSFT GOOGL"``.
-
-    Returns:
-        A de-duplicated, upper-cased ticker list in input order. May be
-        empty — the caller is responsible for enforcing :data:`MIN_TICKERS`
-        once any asset-class presets have been merged in.
-
-    Raises:
-        ValueError: If the input is too long, or more than ``MAX_TICKERS``
-            are supplied.
+    May return empty — parse_form enforces MIN_TICKERS after asset-class presets merge in.
     """
     if len(raw) > MAX_TICKER_INPUT_LENGTH:
         raise ValueError(
@@ -111,30 +94,24 @@ def parse_tickers(raw: str) -> List[str]:
 
     tokens = [token.strip().upper() for token in raw.replace(",", " ").split()]
     seen: set = set()
-    tickers: List[str] = []
+    tickers: list[str] = []
     for token in tokens:
-        if token and token not in seen:
-            seen.add(token)
-            tickers.append(token)
+        if not token or token in seen:
+            continue
+        if not _TICKER_RE.match(token):
+            raise ValueError(f"Invalid ticker symbol: {token!r}.")
+        seen.add(token)
+        tickers.append(token)
 
     if len(tickers) > MAX_TICKERS:
         raise ValueError(f"Please supply at most {MAX_TICKERS} tickers.")
     return tickers
 
 
-def _parse_asset_classes(raw: List[str]) -> List[str]:
-    """Validate the selected asset-class keys.
-
-    Args:
-        raw: The list of ``asset_classes`` form values (the multi-select
-            checkbox group). Unknown keys raise.
-
-    Returns:
-        A de-duplicated list of recognised asset-class keys, in canonical
-        order (``stocks``, ``etfs``, ``bonds``, ``crypto``).
-    """
+def _parse_asset_classes(raw: list[str]) -> list[str]:
+    """Validate asset-class keys, returning them de-duplicated in canonical order."""
     seen: set = set()
-    cleaned: List[str] = []
+    cleaned: list[str] = []
     for value in raw:
         key = (value or "").strip().lower()
         if not key or key in seen:
@@ -147,12 +124,12 @@ def _parse_asset_classes(raw: List[str]) -> List[str]:
 
 
 def _merge_universe(
-    typed: List[str],
-    classes: List[str],
-) -> List[str]:
+    typed: list[str],
+    classes: list[str],
+) -> list[str]:
     """Merge user-typed tickers with the selected asset-class presets."""
     seen: set = set()
-    merged: List[str] = []
+    merged: list[str] = []
     for ticker in typed:
         if ticker not in seen:
             seen.add(ticker)
@@ -171,13 +148,13 @@ def _parse_market_ticker(raw: str) -> str:
     cleaned = (raw or "").strip().upper()
     if not cleaned:
         return DEFAULT_MARKET_TICKER
-    if len(cleaned.split()) > 1:
-        raise ValueError("Market ticker must be a single symbol.")
+    if not _TICKER_RE.match(cleaned):
+        raise ValueError("Market ticker must be a single valid symbol.")
     return cleaned
 
 
 def _parse_iso_date(value: str, field: str) -> date:
-    """Parse an ISO ``YYYY-MM-DD`` date or raise ValueError with a friendly message."""
+    """Parse an ISO YYYY-MM-DD date or raise ValueError with a friendly message."""
     try:
         return date.fromisoformat(value)
     except (TypeError, ValueError) as exc:
@@ -193,19 +170,7 @@ def _parse_float(value: str, field: str) -> float:
 
 
 def parse_form(form: Mapping[str, str]) -> AnalysisRequest:
-    """Validate and convert raw form fields into an :class:`AnalysisRequest`.
-
-    Args:
-        form: A mapping from form field name to raw string value. The
-            ``asset_classes`` field is treated as multi-valued via
-            ``getlist`` when available (Werkzeug ``MultiDict``).
-
-    Returns:
-        A validated, immutable :class:`AnalysisRequest`.
-
-    Raises:
-        ValueError: For any malformed or out-of-range field.
-    """
+    """Validate raw form fields into an AnalysisRequest; raises ValueError on bad input."""
     typed_tickers = parse_tickers(form.get("tickers", ""))
 
     raw_classes = (
@@ -254,18 +219,25 @@ def parse_form(form: Mapping[str, str]) -> AnalysisRequest:
     )
 
 
+class SingleIndexFit(TypedDict):
+    """Per-asset Single Index Model decomposition returned by the service."""
+
+    alphas: dict[str, float]
+    betas: dict[str, float]
+    systematic: dict[str, float]
+    firm_specific: dict[str, float]
+    total: dict[str, float]
+    r_squared: dict[str, float]
+    market_variance: float
+
+
 def _fit_single_index_model(
     prices: pd.DataFrame,
-    asset_tickers: List[str],
+    asset_tickers: list[str],
     market_ticker: str,
-) -> Dict[str, Dict[str, float]]:
-    """Fit the Single Index Model and return per-asset risk decompositions.
-
-    Returns an empty result if ``market_ticker`` is missing from ``prices``
-    (e.g. yfinance returned nothing for the chosen proxy) so the rest of
-    the analysis can still render.
-    """
-    empty: Dict[str, Dict[str, float]] = {
+) -> SingleIndexFit:
+    """Fit the Single Index Model; returns an empty result if the market proxy has no data."""
+    empty: SingleIndexFit = {
         "alphas": {},
         "betas": {},
         "systematic": {},
@@ -302,19 +274,7 @@ def _fit_single_index_model(
 
 
 def run_analysis(request: AnalysisRequest) -> AnalysisResult:
-    """Fetch prices for ``request`` and compute every available analytic.
-
-    Args:
-        request: A validated :class:`AnalysisRequest`.
-
-    Returns:
-        An :class:`AnalysisResult` with MPT, VaR/CVaR, utility, and
-        Single Index Model figures.
-
-    Raises:
-        ValueError: If yfinance returns no data for the chosen tickers /
-            date range, or if any individual model fails to fit.
-    """
+    """Fetch prices and compute MPT, VaR/CVaR, utility, and Single Index Model figures."""
     ingestion = DataIngestion(
         start_date=request.start_date,
         end_date=request.end_date,
@@ -386,6 +346,6 @@ def run_analysis(request: AnalysisRequest) -> AnalysisResult:
     )
 
 
-def _series_to_dict(series: pd.Series) -> Dict[str, float]:
+def _series_to_dict(series: pd.Series) -> dict[str, float]:
     """Convert a numeric Series to a plain ``{ticker: value}`` dict."""
     return {str(idx): float(value) for idx, value in series.items()}

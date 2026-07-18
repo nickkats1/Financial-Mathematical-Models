@@ -5,30 +5,6 @@ import pytest
 
 
 @pytest.fixture
-def dummy_config():
-    """Return a small in-memory config dict mirroring :mod:`portfolio.config`."""
-    config = {
-        "start_date": "2024-01-01",
-        "end_date": "2024-01-05",
-        "stock_tickers": ["META", "NVDA", "MCD"],
-        "etf_tickers": ["BEG", "QQQ"],
-        "bond_tickers": ["^TNX", "^IRX"],
-        "crypto_tickers": ["BTC-USD", "ETH-USD"],
-        "sp500_ticker": "^GSPC",
-        "risk_free_rate": 0.001,
-        "risk_aversion": 4.0,
-    }
-    config["all_tickers"] = (
-        config["stock_tickers"]
-        + config["etf_tickers"]
-        + config["bond_tickers"]
-        + config["crypto_tickers"]
-        + [config["sp500_ticker"]]
-    )
-    return config
-
-
-@pytest.fixture
 def fake_prices():
     """Return a small synthetic price DataFrame for fast offline tests."""
     dates = pd.bdate_range("2024-01-01", periods=3)
