@@ -8,7 +8,7 @@ from pypfopt import EfficientFrontier, expected_returns, risk_models
 
 def portfolio_metrics(prices: pd.DataFrame, risk_free_rate: float) -> dict[str, Any]:
     """Return expected return, volatility, Sharpe ratio, and weights of the max-Sharpe portfolio."""
-    if prices is None or prices.empty or prices.shape[1] == 0:
+    if prices is None or prices.empty:
         raise ValueError("prices must contain at least one asset column")
     if prices.shape[0] < 2:
         raise ValueError("prices must contain at least two observations")

@@ -1,233 +1,174 @@
 # Financial Mathematical Models
 
-A small Python library, notebook collection, and Flask web app covering a
-handful of foundational topics in quantitative finance:
+Classic mathematical-finance models — Modern Portfolio Theory, the Single Index Model,
+mean-variance utility, and historical VaR/CVaR — as a typed Python library, a set of
+demo notebooks, and a Flask web app.
 
-- **Modern Portfolio Theory** — long-only, fully-invested max-Sharpe portfolios
-- **Single Index Model** — alpha, beta, and the systematic / firm-specific risk decomposition
-- **Mean-variance utility theory** — utility for risk-averse, risk-neutral, and risk-loving investors, plus the optimal cash / risky-asset allocation
-- **Value at Risk and Conditional Value at Risk** — historical (non-parametric) VaR and Expected Shortfall
+[![CI](https://github.com/nickkats1/Financial-Mathematical-Models/actions/workflows/build_deploy.yaml/badge.svg)](https://github.com/nickkats1/Financial-Mathematical-Models/actions/workflows/build_deploy.yaml)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A597%25%20branch-brightgreen)](pyproject.toml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://img.shields.io/badge/mypy-checked-blue)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
-Everything is built on `pypfopt`, `statsmodels`, `pandas`, and `yfinance`.
-The Flask app on top is hardened with CSRF protection, per-IP rate
-limiting, an in-memory price cache with retry on transient yfinance
-failures, and a startup-time check that refuses to boot in production
-without a real `FLASK_SECRET_KEY`.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+  <img src="docs/screenshot-light.png" alt="Results page: max-Sharpe weights, VaR/CVaR, utility, and Single Index Model charts" width="100%">
+</picture>
 
-## Repository layout
+## Highlights
 
-```
-.
-├── app/                       # Flask web app (form input + results page)
-│   ├── __init__.py            # create_app factory
-│   ├── routes.py              # HTTP routes
-│   ├── services.py            # Glue between form input and portfolio.*
-│   ├── templates/             # Jinja2 templates
-│   └── static/                # CSS + JavaScript (Chart.js bar chart)
-├── notebooks/                 # Concept + EDA + API-demo notebooks
-│   ├── _data_ingestion.ipynb
-│   ├── _mpt.ipynb
-│   ├── _risk.ipynb
-│   ├── _single_index_model.ipynb
-│   └── _utility.ipynb
-├── portfolio/                 # Core library
-│   ├── config.py              # Tickers, date range, default confidence levels
-│   ├── data/data_ingestion.py # yfinance wrapper
-│   └── models/
-│       ├── mpt.py
-│       ├── risk.py
-│       ├── single_index_model.py
-│       └── utility.py
-├── tests/                     # pytest suite (120+ tests, 100% coverage, fully offline)
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── requirements.txt
-└── wsgi.py                    # gunicorn entry point
-```
+- Every model takes a `pandas.DataFrame` of closing prices and returns plain floats,
+  `pd.Series`, or dicts — no framework types leak in or out.
+- Use it three ways: import `portfolio` as a library, read the [notebooks](#notebooks)
+  for the theory, or run the web app and analyse a ticker universe interactively.
+- The test suite is fully offline — every yfinance call is mocked — and runs in seconds
+  with a 97% branch-coverage floor.
+- Market data is flaky, so the data layer plans for it: prices are cached, transport
+  errors are retried, and tickers Yahoo silently drops are surfaced in a banner instead
+  of vanishing from the results.
 
-## Installation
+## Quick start
+
+Requires Python 3.11+.
 
 ```bash
 git clone https://github.com/nickkats1/Financial-Mathematical-Models.git
 cd Financial-Mathematical-Models
 python -m venv venv
-source venv/bin/activate            # Windows: venv\Scripts\activate
-pip install -r requirements.txt     # runtime deps for the library + web app
+source venv/bin/activate
+pip install -e '.[dev]'
 ```
 
-Optional extras:
-
-```bash
-pip install -e '.[dev]'             # pytest, ruff, mypy — to run the test suite
-pip install -e '.[notebooks]'       # jupyter, matplotlib, seaborn, scikit-learn
-```
-
-## Quickstart — the library
+The editable install is required: the code lives in `src/portfolio/` but imports as
+`portfolio`. Add `'.[notebooks]'` for jupyter, matplotlib, seaborn, scipy, and statsmodels.
 
 ```python
-from portfolio.data import DataIngestion
-from portfolio.models import (
-    SingleIndexModel,
-    get_cvar,
-    get_utility,
-    get_var,
-    max_utility,
-    portfolio_metrics,
-)
+from portfolio.data import DataIngestion, compute_returns
+from portfolio.models import SingleIndexModel, get_risk_metrics, portfolio_metrics
 
-ingestion = DataIngestion()
-prices = ingestion.get_stock_prices()
+data = DataIngestion(start_date="2022-01-01", end_date="2025-01-01")
+prices = data.fetch_prices(["AAPL", "MSFT", "NVDA", "^GSPC"])
+assets = prices[["AAPL", "MSFT", "NVDA"]]
 
-# Modern Portfolio Theory: long-only max-Sharpe portfolio
-metrics = portfolio_metrics(prices, risk_free_rate=0.04)
-print(metrics["sharpe_ratio"], metrics["weights"])
+mpt = portfolio_metrics(assets, risk_free_rate=0.04)
+print(mpt["sharpe_ratio"], mpt["weights"])
 
-# Historical Value at Risk and Expected Shortfall
-print(get_var(prices, confidence=0.95))
-print(get_cvar(prices, confidence=0.95))
+risk = get_risk_metrics(assets)          # {0.90: (VaR, CVaR), 0.95: ..., 0.99: ...}
 
-# Mean-variance utility
-print(get_utility(prices, risk_aversion=3.0))
-print(max_utility(prices, risk_aversion=3.0, risk_free_rate=0.04))
-
-# Single Index Model
 sim = SingleIndexModel()
-sim.get_models(
-    tickers=list(prices.columns),
-    market_ticker="^GSPC",                 # add ^GSPC to your universe first
-    returns=DataIngestion.compute_returns(prices),
-)
+sim.get_models(["AAPL", "MSFT", "NVDA"], "^GSPC", compute_returns(prices))
 print(sim.get_betas())
 ```
 
-The notebooks in `notebooks/` are short, runnable demos of the public API for
-each module — start there if you prefer reading code.
+`DataIngestion` also ships preset universes — `get_asset_class_prices("stocks")` (or
+`"etfs"`, `"bonds"`, `"crypto"`) — defined in `src/portfolio/config.py`.
 
-## Quickstart — the web app
+## The models
 
-The Flask app exposes a single form where the user picks:
+| Model | Function(s) | What it computes |
+| --- | --- | --- |
+| Modern Portfolio Theory | `portfolio_metrics` | Max-Sharpe portfolio (long-only, fully invested) via [PyPortfolioOpt](https://github.com/robertmartin8/PyPortfolioOpt): expected annual return, volatility, Sharpe ratio, cleaned weights |
+| Value at Risk | `get_var`, `get_cvar`, `get_risk_metrics` | Historical (non-parametric) VaR and CVaR; `get_risk_metrics` returns the 90/95/99% levels in one pass |
+| Mean-variance utility | `get_utility`, `max_utility` | Per-asset utility `U = E[r] − ½Aσ²` and the utility at the optimal risky share `y* = (E[r] − r_f) / (Aσ²)` |
+| Single Index Model | `SingleIndexModel` | Vectorised OLS of every asset on the market proxy: `R_i = α_i + β_i·R_m + ε_i`, with systematic vs. firm-specific risk and R² |
 
-- a list of tickers, and/or any of the preset asset classes
-  (Stocks, ETFs, Treasury bonds, Crypto) — the merged universe is fed
-  into the same Sharpe-ratio optimisation,
-- a date range,
-- a risk-free rate and risk-aversion coefficient,
-- and (optionally) a market proxy ticker for the Single Index Model
-  (default `^GSPC`).
+`SingleIndexModel` is the one stateful class — call `get_models(tickers, market_ticker,
+returns)` before any getter. Everything else is a pure function.
 
-On submit the app fetches prices via `yfinance` and renders the
-max-Sharpe portfolio (with an interactive Chart.js bar chart of the
-optimal weights), historical VaR / CVaR at the 90 %, 95 %, and 99 %
-confidence levels, per-asset mean-variance utility, and the Single Index
-Model decomposition (alpha, beta, R², systematic / firm-specific / total
-risk per asset). Any tickers that yfinance silently drops are listed in
-a banner at the top of the results page.
+## Web app
 
 ```bash
-# Local development
-flask --app wsgi:application run --debug
-# → http://127.0.0.1:5000/
-
-# Production server
-gunicorn --bind 0.0.0.0:8000 --workers 2 wsgi:application
+flask --app wsgi:application run --debug        # development server on :5000
 ```
 
-### Production checklist
-
-- Set `FLASK_ENV=production`. With this set, the app refuses to start
-  unless `FLASK_SECRET_KEY` is also set to a non-default value.
-- Generate a secret key with:
-  ```bash
-  python -c 'import secrets; print(secrets.token_hex(32))'
-  ```
-- The default rate limit is **120 requests/minute per IP** globally and
-  **10 requests/minute on `/analyze`**. `/healthz` is exempt.
-- The price cache and rate-limit storage are in-memory and per-process —
-  fine for a single `gunicorn` worker; for multi-worker or multi-host
-  deploys, point both at Redis.
+Pick tickers (or whole asset classes), a date window, a risk-free rate, a risk-aversion
+coefficient, and a market proxy (default `^GSPC`). The results page renders all four
+models as Chart.js figures with accessible data tables, in light and dark mode.
 
 ### Docker
 
 ```bash
-# Single container
-docker build -f docker/Dockerfile -t financial-mathematical-models .
-docker run --rm -p 8000:8000 -e FLASK_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')" financial-mathematical-models
-
-# Or via docker compose — requires FLASK_SECRET_KEY in the host env or a .env file
-FLASK_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')" docker compose -f docker/docker-compose.yml up --build
+export FLASK_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+docker compose -f docker/docker-compose.yml up --build   # serves on :8080
 ```
 
-The app then serves at <http://localhost:8000/>.
+The image runs gunicorn with **one worker on purpose**: the price cache and the in-memory
+rate limiter are per-process, so a second worker would halve cache hits and double the
+real rate limit.
 
-## Running the tests
+### Configuration
+
+<details>
+<summary>Environment variables (defaults in <code>app/config.py</code>)</summary>
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `FLASK_SECRET_KEY` | — | Session key; **required** when `FLASK_ENV=production` |
+| `FLASK_ENV` | `development` | `production` enables secure cookies and the secret-key check |
+| `FMM_RATE_LIMIT_DEFAULT` | `120 per minute` | Global per-IP rate limit |
+| `FMM_RATE_LIMIT_ANALYZE` | `10 per minute` | Extra limit on `POST /analyze` |
+| `FMM_PRICE_CACHE_TTL_SECONDS` | `300` | Price-cache lifetime |
+| `FMM_PRICE_CACHE_MAX_ENTRIES` | `1024` | Price-cache size |
+| `FMM_MIN_TICKERS` / `FMM_MAX_TICKERS` | `2` / `200` | Universe size bounds |
+| `FMM_PORT` | `8080` | Port used by the Docker image |
+
+</details>
+
+## Notebooks
+
+Each notebook develops the theory and then demonstrates the library on real data.
+
+| Notebook | Topic |
+| --- | --- |
+| [`_data_ingestion.ipynb`](notebooks/_data_ingestion.ipynb) | Fetching a universe, EDA on prices, computing returns |
+| [`_mpt.ipynb`](notebooks/_mpt.ipynb) | Markowitz (1952), the efficient frontier, the max-Sharpe portfolio |
+| [`_risk.ipynb`](notebooks/_risk.ipynb) | Return distributions, fat tails, historical VaR and CVaR |
+| [`_single_index_model.ipynb`](notebooks/_single_index_model.ipynb) | Beta, alpha, and the variance decomposition |
+| [`_utility.ipynb`](notebooks/_utility.ipynb) | Risk aversion, investor archetypes, optimal capital allocation |
+
+## Architecture
+
+![Architecture: browser to Flask layer to portfolio library to yfinance](docs/architecture.svg)
+
+The library (`src/portfolio/`) never imports Flask, and the app never calls yfinance
+directly. `app/forms.py` (validate) and `app/services.py` (run) are the only bridge: a raw
+form dict becomes a frozen `AnalysisRequest`, `run_analysis` drives the models, and a
+frozen `AnalysisResult` of flat scalars feeds the results page and its Chart.js figures.
+
+## Development
 
 ```bash
-pip install -e '.[dev]'
-pytest                      # or: pytest --cov --cov-report=term-missing
-ruff check .                # lint
-mypy                        # static type check
+pytest                                   # full suite, offline, seconds
+pytest --cov --cov-report=term-missing   # CI enforces --cov-fail-under=97
+ruff check .                             # lint, line-length 100
+mypy                                     # paths configured in pyproject.toml
 ```
 
-The test suite is fully offline — every yfinance call is mocked — so it runs
-in a few seconds, and covers 100% of the library and web-app code. Continuous
-integration runs the same lint / type-check / test steps on Python 3.11–3.13.
+The test tree mirrors the source tree — one test module per source module
+(`app/routes.py` → `tests/app/test_routes.py`), with a single `tests/conftest.py`. CI runs
+ruff, mypy, and pytest on Python 3.11–3.13, then builds the Docker image.
 
-## Mathematical background
+## Project layout
 
-### Modern Portfolio Theory
+```text
+app/                    Flask layer: routes, forms, services, templates, Chart.js
+src/portfolio/          the library — never imports Flask
+  config.py             asset-class presets, defaults (market proxy, trading days)
+  data/                 yfinance ingestion, TTL cache, retries
+  models/               mpt, risk, single_index_model, utility
+notebooks/              theory + demos (excluded from lint/type checks)
+tests/                  mirrors the source tree; fully offline
+docker/                 Dockerfile + compose; healthcheck on /healthz
+wsgi.py                 gunicorn entry point
+```
 
-For a portfolio with weights $w$, expected returns $\mu$, and covariance
-matrix $\Sigma$, the expected return is $w^\top \mu$ and the variance is
-$w^\top \Sigma w$. The Sharpe ratio at risk-free rate $r_f$ is
+## Disclaimer
 
-$$ S(w) = \frac{w^\top \mu - r_f}{\sqrt{w^\top \Sigma w}}. $$
-
-`portfolio.models.mpt.portfolio_metrics` solves $\arg\max_w S(w)$ subject
-to $\sum_i w_i = 1$ and $w_i \ge 0$.
-
-### Single Index Model
-
-For asset $i$ and market proxy $m$,
-
-$$ R_i = \alpha_i + \beta_i R_m + \epsilon_i, $$
-
-with $\sigma_i^2 = \beta_i^2 \sigma_m^2 + \sigma_{\epsilon_i}^2$ — the
-classic decomposition into systematic and firm-specific risk. Fitted via OLS
-in `portfolio.models.SingleIndexModel`.
-
-### Utility theory
-
-Mean-variance utility for risk-aversion $A$:
-
-$$ U = \mathbb{E}[R] - \tfrac{1}{2} A \, \mathrm{Var}[R]. $$
-
-The optimal allocation between cash and a single risky asset is
-$y^\star = (\mathbb{E}[r] - r_f) / (A \sigma^2)$ — a textbook result that
-`portfolio.models.utility.max_utility` evaluates per asset.
-
-### Value at Risk and CVaR
-
-Both are computed historically: VaR is the $(1 - c)$ percentile of the
-empirical return distribution, and CVaR is the mean of returns at or below
-that threshold. CVaR is a coherent risk measure; VaR is not.
-
-## Caveats
-
-- **Estimation risk.** Expected returns and covariances are estimated from
-  historical data. Past returns are noisy, biased estimators of future
-  returns; concentrated max-Sharpe portfolios should not be taken as
-  trading advice.
-- **Single period.** All models in this repo are single-period. Multi-period
-  / dynamic extensions are out of scope.
-- **No transaction costs.** Real-world frictions (fees, taxes, slippage)
-  are ignored.
-- **yfinance is unofficial.** Symbols can be silently renamed, delisted,
-  or rate-limited; the app retries transient failures and lists dropped
-  tickers in the results banner, but cannot paper over a broken upstream.
-- **Educational use only.** This is a teaching repository, not investment
-  advice.
+Price data comes from [yfinance](https://github.com/ranaroussi/yfinance), an unofficial
+Yahoo Finance client — availability is not guaranteed. This project is for education and
+research. Nothing here is investment advice.
 
 ## License
 
-MIT
+[MIT](LICENSE)

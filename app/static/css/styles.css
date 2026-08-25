@@ -13,6 +13,17 @@
   --color-error-bg: #fdecea;
   --color-error-border: #f1948a;
   --color-error-text: #842029;
+  --color-warn-bg: #fff8e1;
+  --color-warn-border: #f0c36d;
+  --color-warn-text: #6b4f0a;
+  --color-input-bg: #ffffff;
+  --color-raised: #f0f4fa;
+  --color-hover: #f0f2f5;
+  --color-positive: #15803d;
+  --color-negative: #b91c1c;
+  --chart-series-1: #2a78d6;
+  --chart-series-2: #eb6834;
+  --chart-negative: #e34948;
   --radius: 8px;
   --shadow: 0 1px 3px rgba(15, 23, 42, 0.06),
             0 4px 12px rgba(15, 23, 42, 0.04);
@@ -20,6 +31,34 @@
                 Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
                "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f1419;
+    --color-surface: #171d25;
+    --color-border: #2a333f;
+    --color-text: #e4e8ed;
+    --color-muted: #939eab;
+    --color-primary: #5b8def;
+    --color-primary-hover: #7ba3f5;
+    --color-error-bg: #3b1f1f;
+    --color-error-border: #7f3b3b;
+    --color-error-text: #f4b8b0;
+    --color-warn-bg: #362c14;
+    --color-warn-border: #6b5520;
+    --color-warn-text: #e8cf8e;
+    --color-input-bg: #0f1419;
+    --color-raised: #1e2732;
+    --color-hover: #202a36;
+    --color-positive: #4ade80;
+    --color-negative: #f87171;
+    --chart-series-1: #3987e5;
+    --chart-series-2: #d95926;
+    --chart-negative: #e66767;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4),
+              0 4px 12px rgba(0, 0, 0, 0.3);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -85,7 +124,8 @@ main { padding: 2rem 0 3rem; }
 
 .hero h1 {
   margin: 0 0 0.5rem;
-  font-size: 2rem;
+  font-size: 2.25rem;
+  letter-spacing: -0.02em;
 }
 
 .hero p {
@@ -127,7 +167,8 @@ main { padding: 2rem 0 3rem; }
   font-family: inherit;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  background: #fff;
+  background: var(--color-input-bg);
+  color: var(--color-text);
 }
 
 .form-row input:focus {
@@ -202,7 +243,7 @@ fieldset.form-row legend {
   border: 1px solid var(--color-border);
 }
 
-.btn-secondary:hover { background: #f0f2f5; }
+.btn-secondary:hover { background: var(--color-hover); }
 
 /* ---------- Alerts ---------- */
 
@@ -219,13 +260,13 @@ fieldset.form-row legend {
 }
 
 .alert-warn {
-  background: #fff8e1;
-  border: 1px solid #f0c36d;
-  color: #6b4f0a;
+  background: var(--color-warn-bg);
+  border: 1px solid var(--color-warn-border);
+  color: var(--color-warn-text);
 }
 
 .warn {
-  color: #6b4f0a;
+  color: var(--color-warn-text);
   font-weight: 500;
 }
 
@@ -274,7 +315,7 @@ fieldset.form-row legend {
 @media (max-width: 600px) { .metrics { grid-template-columns: 1fr; } }
 
 .metric {
-  background: #f0f4fa;
+  background: var(--color-raised);
   border-radius: var(--radius);
   padding: 0.85rem 1rem;
   display: flex;
@@ -294,6 +335,48 @@ fieldset.form-row legend {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
 }
+
+.metric-value.positive { color: var(--color-positive); }
+.metric-value.negative { color: var(--color-negative); }
+
+/* ---------- Charts ---------- */
+
+.chart {
+  margin: 0.75rem 0 0.25rem;
+}
+
+/* Scrolls only once the universe outgrows the box, so small portfolios
+   never show a gratuitous scrollbar. */
+.chart-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 26rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+/* Height is set from JS to fit the row count; Chart.js sizes the canvas to this. */
+.chart-canvas {
+  position: relative;
+  width: 100%;
+  height: 240px;
+}
+
+.chart-scroll::-webkit-scrollbar { width: 8px; }
+.chart-scroll::-webkit-scrollbar-track { background: transparent; }
+
+.chart-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.chart-note {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+  margin: 0.25rem 0 0;
+}
+
+@media (max-width: 600px) { .chart-scroll { max-height: 20rem; } }
 
 /* ---------- Tables ---------- */
 
@@ -317,5 +400,9 @@ fieldset.form-row legend {
   letter-spacing: 0.04em;
   color: var(--color-muted);
 }
+
+.data-table tbody tr:nth-child(even) { background: var(--color-raised); }
+
+.data-table tbody tr:hover { background: var(--color-hover); }
 
 .data-table tbody tr:last-child td { border-bottom: 0; }

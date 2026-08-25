@@ -30,7 +30,3 @@ notebooks
 
 # Tests are not needed in the runtime image
 tests
-
-# Docs / metadata
-README.md
-LICENSE

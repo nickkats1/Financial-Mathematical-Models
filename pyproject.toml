@@ -20,7 +20,6 @@ dependencies = [
     "numpy>=1.26",
     "pandas>=2.1",
     "pyportfolioopt>=1.5",
-    "statsmodels>=0.14",
     "tenacity>=8.2",
     "yfinance>=0.2",
 ]
@@ -38,9 +37,9 @@ notebooks = [
     "jupyter>=1.0",
     "matplotlib>=3.8",
     "seaborn>=0.13",
-    "scikit-learn>=1.3",
-    "nbconvert>=7.0",
-    "nbclient>=0.10",
+    "scikit-learn>=1.4",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
 ]
 
 [project.urls]
@@ -54,7 +53,12 @@ packages = ["app", "portfolio", "portfolio.data", "portfolio.models"]
 portfolio = "src/portfolio"
 
 [tool.setuptools.package-data]
-app = ["templates/*.html", "static/css/*.css", "static/js/*.js"]
+app = [
+    "templates/*.html",
+    "templates/partials/*.html",
+    "static/css/*.css",
+    "static/js/*.js",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -67,8 +71,14 @@ filterwarnings = [
 branch = true
 source = ["portfolio", "app"]
 
+# src/ layout: reconcile the editable-install path with an installed copy so a
+# single report covers both.
+[tool.coverage.paths]
+source = ["src/portfolio", "*/site-packages/portfolio"]
+
 [tool.coverage.report]
 show_missing = true
+fail_under = 97
 exclude_lines = [
     "pragma: no cover",
     "raise NotImplementedError",
@@ -80,13 +90,10 @@ exclude_lines = [
 line-length = 100
 target-version = "py311"
 # Notebooks are illustrative API demos, not shipped code — don't lint them.
-extend-exclude = ["notebooks", "venv"]
+extend-exclude = ["notebooks", "venv*"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "W", "C4", "SIM"]
-# BLE001 (blind-except) is deliberate in a few places where we translate a
-# wide range of third-party exceptions into a friendly ValueError; those
-# call sites carry an explicit ``# noqa`` already.
 
 [tool.mypy]
 python_version = "3.11"

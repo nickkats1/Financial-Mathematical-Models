@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from portfolio.models.risk import get_cvar, get_var
+from portfolio.config import DEFAULT_CONFIG
+from portfolio.models.risk import get_cvar, get_risk_metrics, get_var
 
 
 class TestRisk:
@@ -42,7 +43,6 @@ class TestRisk:
         prices = pd.DataFrame(
             {"A": [100.0, 90.0, 99.0], "B": [50.0, 60.0, 55.0]}
         )
-        # -0.10 (A) is the worst pooled return, so the 5% VaR sits near it.
         assert get_var(prices, confidence=0.95) < 0.0
 
     def test_invalid_confidence_raises(self, fake_prices):
@@ -73,3 +73,37 @@ class TestRisk:
         prices = pd.DataFrame({"A": [0.0, 5.0]})
         with pytest.raises(ValueError, match="no finite returns"):
             get_var(prices)
+
+
+class TestRiskMetrics:
+    """Tests for the batched multi-level helper."""
+
+    def test_agrees_with_get_var_and_get_cvar(self, fake_prices):
+        """The batched form must not drift from the single-level functions."""
+        for confidence, (var, cvar) in get_risk_metrics(fake_prices).items():
+            assert var == pytest.approx(get_var(fake_prices, confidence))
+            assert cvar == pytest.approx(get_cvar(fake_prices, confidence))
+
+    def test_keys_are_the_configured_levels(self, fake_prices):
+        metrics = get_risk_metrics(fake_prices)
+        assert list(metrics) == list(DEFAULT_CONFIG.confidence_levels)
+
+    def test_honours_explicit_levels(self, fake_prices):
+        assert list(get_risk_metrics(fake_prices, confidences=(0.99,))) == [0.99]
+
+    def test_cvar_is_at_most_var_at_every_level(self, fake_prices):
+        for var, cvar in get_risk_metrics(fake_prices).values():
+            assert cvar <= var
+
+    def test_var_falls_as_confidence_rises(self, two_asset_prices):
+        low, mid, high = get_risk_metrics(two_asset_prices).values()
+        assert high[0] <= mid[0] <= low[0]
+
+    def test_every_level_validated_before_prices_are_read(self):
+        """Validation precedes the data, so a bad level beats the empty-frame error."""
+        with pytest.raises(ValueError, match="confidence must be in"):
+            get_risk_metrics(pd.DataFrame(), confidences=(0.95, 1.5))
+
+    def test_empty_prices_raises(self):
+        with pytest.raises(ValueError, match="prices is empty"):
+            get_risk_metrics(pd.DataFrame())

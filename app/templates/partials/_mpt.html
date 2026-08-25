@@ -1,0 +1,47 @@
+<section class="card">
+  <h2>Modern Portfolio Theory — max-Sharpe portfolio</h2>
+  <div class="metrics">
+    <div class="metric">
+      <span class="metric-label">Expected annual return</span>
+      <span class="metric-value {{ 'positive' if result.expected_annual_return >= 0 else 'negative' }}">
+        {{ "%.4f"|format(result.expected_annual_return) }}
+      </span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Annual volatility</span>
+      <span class="metric-value">{{ "%.4f"|format(result.annual_volatility) }}</span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">Sharpe ratio</span>
+      <span class="metric-value {{ 'positive' if result.sharpe_ratio >= 0 else 'negative' }}">
+        {{ "%.4f"|format(result.sharpe_ratio) }}
+      </span>
+    </div>
+  </div>
+
+  <h3>Optimal weights</h3>
+  <div class="chart">
+    <div class="chart-scroll">
+      <div class="chart-canvas">
+        <canvas id="weights-chart" role="img"
+                aria-label="Bar chart of optimal portfolio weight per ticker, largest first.">
+          Chart unavailable — every weight is listed in the table below.
+        </canvas>
+      </div>
+    </div>
+  </div>
+  <p class="chart-note">Assets with a zero weight are omitted from the chart but kept in the table.</p>
+
+  <table class="data-table">
+    <thead><tr><th>Ticker</th><th>Weight</th></tr></thead>
+    <tbody>
+      {% for ticker, weight in result.weights.items() | sort(attribute=1, reverse=True) %}
+        <tr><td>{{ ticker }}</td><td>{{ "%.4f"|format(weight) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script id="weights-data" type="application/json">
+    {{ result.weights | tojson }}
+  </script>
+</section>

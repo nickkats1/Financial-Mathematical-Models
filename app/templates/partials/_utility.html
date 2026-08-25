@@ -1,0 +1,52 @@
+<section class="card">
+  <h2>Mean-variance utility</h2>
+  <p class="caption">
+    <code>U = E[r] − ½ · A · Var[r]</code> per asset, plus the
+    utility-maximising allocation between cash and each risky asset.
+  </p>
+
+  <div class="chart">
+    <div class="chart-scroll">
+      <div class="chart-canvas">
+        <canvas id="utility-chart" role="img"
+                aria-label="Grouped bar chart comparing utility and maximum utility per ticker.">
+          Chart unavailable — every figure is listed in the table below.
+        </canvas>
+      </div>
+    </div>
+  </div>
+  <p class="chart-note">Assets with zero variance have no U* and show only the utility bar.</p>
+  {% if result.risk_aversion < 0 %}
+    <p class="chart-note">
+      A is negative, so U is convex in the risky weight — the reported U* is the
+      stationary point, which is a <strong>minimum</strong>, not a maximum.
+    </p>
+  {% endif %}
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th>Utility (U)</th>
+        <th>Max utility (U*)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ticker in result.tickers %}
+        <tr>
+          <td>{{ ticker }}</td>
+          <td>{{ "%.4f"|format(result.utility[ticker]) }}</td>
+          {% if ticker in result.max_utility %}
+            <td>{{ "%.4f"|format(result.max_utility[ticker]) }}</td>
+          {% else %}
+            <td>N/A</td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script id="utility-data" type="application/json">
+    {{ { "utility": result.utility, "max_utility": result.max_utility } | tojson }}
+  </script>
+</section>

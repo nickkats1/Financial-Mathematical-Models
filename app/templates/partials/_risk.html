@@ -1,0 +1,36 @@
+<section class="card">
+  <h2>Value at Risk and Conditional Value at Risk</h2>
+
+  <div class="chart">
+    <div class="chart-canvas">
+      <canvas id="risk-chart" role="img"
+              aria-label="Grouped column chart comparing VaR and CVaR at the 90, 95 and 99 percent confidence levels.">
+        Chart unavailable — every figure is listed in the table below.
+      </canvas>
+    </div>
+  </div>
+
+  <table class="data-table">
+    <thead><tr><th>Confidence</th><th>VaR</th><th>CVaR</th></tr></thead>
+    <tbody>
+      <tr><td>90%</td><td>{{ "%.4f"|format(result.var_90) }}</td><td>{{ "%.4f"|format(result.cvar_90) }}</td></tr>
+      <tr><td>95%</td><td>{{ "%.4f"|format(result.var_95) }}</td><td>{{ "%.4f"|format(result.cvar_95) }}</td></tr>
+      <tr><td>99%</td><td>{{ "%.4f"|format(result.var_99) }}</td><td>{{ "%.4f"|format(result.cvar_99) }}</td></tr>
+    </tbody>
+  </table>
+
+  <p class="caption">
+    Daily, historical (non-parametric). VaR is the
+    <em>(1 − confidence)</em> percentile of the empirical return
+    distribution; CVaR is the mean of returns at or below VaR.
+    Both are losses, so the bars run below zero.
+  </p>
+
+  <script id="risk-data" type="application/json">
+    {{ {
+         "var_90": result.var_90, "cvar_90": result.cvar_90,
+         "var_95": result.var_95, "cvar_95": result.cvar_95,
+         "var_99": result.var_99, "cvar_99": result.cvar_99
+       } | tojson }}
+  </script>
+</section>

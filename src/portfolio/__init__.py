@@ -5,5 +5,3 @@ Subpackages:
     models: Implementations of MPT, the Single Index Model, utility theory,
         and risk measures (VaR / CVaR).
 """
-
-__version__ = "0.1.0"

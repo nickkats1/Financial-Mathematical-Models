@@ -8,13 +8,15 @@ Modules:
 """
 
 from .mpt import portfolio_metrics
-from .risk import get_cvar, get_var
-from .single_index_model import SingleIndexModel
+from .risk import get_cvar, get_risk_metrics, get_var
+from .single_index_model import AssetFit, SingleIndexModel
 from .utility import get_utility, max_utility
 
 __all__ = [
+    "AssetFit",
     "SingleIndexModel",
     "get_cvar",
+    "get_risk_metrics",
     "get_utility",
     "get_var",
     "max_utility",

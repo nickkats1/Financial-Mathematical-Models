@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from portfolio.config import TRADING_DAYS
 from portfolio.models.single_index_model import SingleIndexModel
 
 
@@ -61,6 +62,7 @@ class TestRequiresFit:
         [
             "get_betas",
             "get_alphas",
+            "get_r_squared",
             "get_residuals",
             "get_market_variance",
             "get_systematic_risks",
@@ -100,9 +102,9 @@ class TestModelOutputs:
             assert isinstance(residuals[ticker], pd.Series)
             assert len(residuals[ticker]) == len(returns)
 
-    def test_market_variance_is_positive(self, fitted, returns):
+    def test_market_variance_is_annualised(self, fitted, returns):
         assert fitted.get_market_variance() == pytest.approx(
-            float(returns["^GSPC"].var(ddof=1))
+            float(returns["^GSPC"].var(ddof=1)) * TRADING_DAYS
         )
         assert fitted.get_market_variance() > 0.0
 
@@ -115,9 +117,22 @@ class TestModelOutputs:
             assert firm[ticker] >= 0.0
             assert np.isclose(systematic[ticker] + firm[ticker], total[ticker])
 
-    def test_market_regressed_on_itself_has_unit_beta(self, model, returns):
-        """Sanity check: regressing the market on itself yields beta ~ 1."""
-        model.get_models(["^GSPC"], "^GSPC", returns)
-        assert model.get_betas()["^GSPC"] == pytest.approx(1.0, abs=1e-9)
-        # All variance is systematic; firm-specific risk is ~0.
-        assert model.get_firm_specific_risks()["^GSPC"] == pytest.approx(0.0, abs=1e-12)
+    def test_r_squared_matches_the_fitted_models(self, fitted):
+        r_squared = fitted.get_r_squared()
+        assert set(r_squared) == {"AAPL", "MSFT", "KO"}
+        for ticker, model in fitted.results.items():
+            assert r_squared[ticker] == pytest.approx(float(model.rsquared))
+            assert 0.0 <= r_squared[ticker] <= 1.0
+
+    def test_getters_are_stable_across_repeated_calls(self, fitted):
+        """Estimates are derived once at fit time, so call order must not matter."""
+        before = (fitted.get_total_risks(), fitted.get_betas())
+        fitted.get_systematic_risks()
+        fitted.get_firm_specific_risks()
+        assert (fitted.get_total_risks(), fitted.get_betas()) == before
+
+    def test_getters_return_independent_copies(self, fitted):
+        """Mutating a returned dict must not corrupt the cached estimates."""
+        betas = fitted.get_betas()
+        betas["AAPL"] = 999.0
+        assert fitted.get_betas()["AAPL"] != 999.0

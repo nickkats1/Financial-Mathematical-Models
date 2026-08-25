@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 460" width="880" height="460" role="img" aria-label="Architecture: the browser posts a form to the Flask layer in app/, which calls the portfolio library, which calls yfinance. app/services.py is the only bridge between the two layers.">
+  <style>
+    :root {
+      --fg: #1f2933;
+      --muted: #6b7785;
+      --line: #d3d9e0;
+      --surface: #ffffff;
+      --panel: #f0f4fa;
+      --accent: #2a78d6;
+      --accent2: #eb6834;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fg: #e4e8ed;
+        --muted: #939eab;
+        --line: #2a333f;
+        --surface: #171d25;
+        --panel: #1e2732;
+        --accent: #3987e5;
+        --accent2: #d95926;
+      }
+    }
+    text {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif;
+      fill: var(--fg);
+    }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .group-label { font-size: 12.5px; font-weight: 600; fill: var(--muted); letter-spacing: .02em; }
+    .box-title { font-size: 13.5px; font-weight: 600; }
+    .box-sub { font-size: 11.5px; fill: var(--muted); }
+    .caption { font-size: 11.5px; fill: var(--muted); font-style: italic; }
+    .note { font-size: 12px; fill: var(--muted); }
+    .edge-label { font-size: 11px; fill: var(--muted); }
+    .group { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+    .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+    .external { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .bridge { stroke: var(--accent2); stroke-width: 2; }
+    .flow { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+    .lead { stroke: var(--line); stroke-width: 1.5; fill: none; }
+  </style>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+    </marker>
+  </defs>
+
+  <rect class="external" x="32" y="16" width="556" height="44" rx="8"/>
+  <text class="box-title" x="310" y="43" text-anchor="middle">Browser — form  ▸  results page + Chart.js</text>
+
+  <path class="flow" d="M 310 60 L 310 82" marker-end="url(#arrow)"/>
+  <text class="edge-label" x="320" y="76">raw dict[str, str]</text>
+
+  <rect class="group" x="32" y="84" width="556" height="132" rx="10"/>
+  <text class="group-label" x="48" y="106">app/  ·  Flask layer</text>
+
+  <rect class="box" x="48" y="114" width="254" height="46" rx="7"/>
+  <text class="box-title mono" x="60" y="133">routes.py</text>
+  <text class="box-sub" x="60" y="150">GET /  ·  POST /analyze  ·  /healthz</text>
+
+  <rect class="box bridge" x="318" y="114" width="254" height="46" rx="7"/>
+  <text class="box-title mono" x="330" y="133">services.py</text>
+  <text class="box-sub" x="330" y="150">parse_form  →  run_analysis</text>
+
+  <text class="caption" x="48" y="192">AnalysisRequest  →  AnalysisResult   (frozen, validated)</text>
+
+  <path class="flow" d="M 310 216 L 310 238" marker-end="url(#arrow)"/>
+  <text class="edge-label" x="320" y="232">pd.DataFrame</text>
+
+  <rect class="group" x="32" y="240" width="556" height="132" rx="10"/>
+  <text class="group-label" x="48" y="262">src/portfolio/  ·  library — never imports Flask</text>
+
+  <rect class="box" x="48" y="270" width="254" height="46" rx="7"/>
+  <text class="box-title mono" x="60" y="289">models/</text>
+  <text class="box-sub" x="60" y="306">mpt · single_index · risk · utility</text>
+
+  <rect class="box" x="318" y="270" width="254" height="46" rx="7"/>
+  <text class="box-title mono" x="330" y="289">data/</text>
+  <text class="box-sub" x="330" y="306">DataIngestion · TTL cache · retry ×3</text>
+
+  <text class="caption" x="48" y="348">closing prices in  →  float / Series / dict out</text>
+
+  <path class="flow" d="M 310 372 L 310 394" marker-end="url(#arrow)"/>
+
+  <rect class="external" x="32" y="396" width="556" height="44" rx="8"/>
+  <text class="box-title" x="310" y="423" text-anchor="middle">yfinance  ·  external, unofficial</text>
+
+  <path class="lead" d="M 616 137 L 578 137"/>
+  <text class="note" x="624" y="124">services.py is the only</text>
+  <text class="note" x="624" y="140">bridge — nothing else in</text>
+  <text class="note" x="624" y="156">app/ reaches downward.</text>
+
+  <path class="lead" d="M 616 296 L 578 296"/>
+  <text class="note" x="624" y="284">Pure functions. The one</text>
+  <text class="note" x="624" y="300">exception is SingleIndexModel,</text>
+  <text class="note" x="624" y="316">which is stateful.</text>
+</svg>

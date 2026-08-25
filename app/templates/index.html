@@ -100,10 +100,14 @@
           id="risk_aversion"
           name="risk_aversion"
           value="{{ defaults.risk_aversion }}"
-          step="0.1"
+          step="any"
+          min="{{ min_risk_aversion }}"
           required
         >
-        <small>Positive = risk-averse, 0 = neutral, negative = risk-loving.</small>
+        <small>
+          Any non-zero number from {{ min_risk_aversion }} upward. Higher = more
+          risk-averse (typical range 1–5); negative = risk-seeking.
+        </small>
       </div>
       <div class="form-row">
         <label for="market_ticker">Market proxy</label>
@@ -113,7 +117,7 @@
           name="market_ticker"
           value="{{ defaults.market_ticker }}"
         >
-        <small>Used as the market factor for the Single Index Model (default <code>^GSPC</code>).</small>
+        <small>Used as the market factor for the Single Index Model (default <code>{{ defaults.market_ticker }}</code>).</small>
       </div>
     </div>
 

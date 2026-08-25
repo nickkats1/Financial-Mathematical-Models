@@ -1,0 +1,103 @@
+{% if result.betas %}
+  <section class="card">
+    <h2>Single Index Model</h2>
+    <p class="caption">
+      OLS of each asset on the market proxy
+      (<code>{{ result.market_ticker }}</code>):
+      <code>R<sub>i</sub> = α<sub>i</sub> + β<sub>i</sub> · R<sub>m</sub> + ε<sub>i</sub></code>.
+      Annualised market variance for the window:
+      <code>{{ "%.4f"|format(result.market_variance) }}</code>.
+      Alpha is a daily intercept; the risk columns are annualised variances.
+    </p>
+
+    <h3>Beta</h3>
+    <div class="chart">
+      <div class="chart-scroll">
+        <div class="chart-canvas">
+          <canvas id="beta-chart" role="img"
+                  aria-label="Bar chart of each asset's beta against the market proxy, with a reference line at beta equals one.">
+            Chart unavailable — every beta is listed in the table below.
+          </canvas>
+        </div>
+      </div>
+    </div>
+    <p class="chart-note">Bars past the market line move more than the index; bars short of it move less.</p>
+
+    <h3>Alpha</h3>
+    <div class="chart">
+      <div class="chart-scroll">
+        <div class="chart-canvas">
+          <canvas id="alpha-chart" role="img"
+                  aria-label="Diverging bar chart of each asset's alpha, positive to the right of zero and negative to the left.">
+            Chart unavailable — every alpha is listed in the table below.
+          </canvas>
+        </div>
+      </div>
+    </div>
+
+    <h3>Risk decomposition</h3>
+    <div class="chart">
+      <div class="chart-scroll">
+        <div class="chart-canvas">
+          <canvas id="risk-split-chart" role="img"
+                  aria-label="Stacked bar chart showing the share of each asset's total risk that is systematic versus firm-specific.">
+            Chart unavailable — the underlying figures are listed in the table below.
+          </canvas>
+        </div>
+      </div>
+    </div>
+    <p class="chart-note">The systematic share of total risk is R².</p>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Alpha (α)</th>
+          <th>Beta (β)</th>
+          <th>R²</th>
+          <th>Systematic risk</th>
+          <th>Firm-specific risk</th>
+          <th>Total risk</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ticker in result.tickers %}
+          {% if ticker in result.betas %}
+            <tr>
+              <td>{{ ticker }}</td>
+              <td>{{ "%.4f"|format(result.alphas[ticker]) }}</td>
+              <td>{{ "%.4f"|format(result.betas[ticker]) }}</td>
+              <td>{{ "%.4f"|format(result.r_squared[ticker]) }}</td>
+              <td>{{ "%.4f"|format(result.systematic_risks[ticker]) }}</td>
+              <td>{{ "%.4f"|format(result.firm_specific_risks[ticker]) }}</td>
+              <td>{{ "%.4f"|format(result.total_risks[ticker]) }}</td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <script id="sim-data" type="application/json">
+      {{ {
+           "betas": result.betas,
+           "alphas": result.alphas,
+           "systematic_risks": result.systematic_risks,
+           "firm_specific_risks": result.firm_specific_risks
+         } | tojson }}
+    </script>
+  </section>
+{% else %}
+  <section class="card">
+    <h2>Single Index Model</h2>
+    <p class="caption">
+      {% if not result.market_proxy_available %}
+        Could not fit — market proxy
+        <code>{{ result.market_ticker }}</code> returned no usable price
+        data for this window.
+      {% else %}
+        Could not fit — <code>{{ result.market_ticker }}</code> and the selected
+        assets share too few overlapping return observations for this window.
+      {% endif %}
+    </p>
+  </section>
+{% endif %}

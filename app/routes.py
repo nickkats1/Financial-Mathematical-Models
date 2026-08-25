@@ -3,34 +3,32 @@
 import logging
 from datetime import date, timedelta
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, current_app, render_template, request
 
 from app import limiter
-from app.services import ASSET_CLASS_LABELS, parse_form, run_analysis
+from app.config import DEFAULT_APP_CONFIG
+from app.forms import ASSET_CLASS_LABELS, _selected_asset_classes, parse_form
+from app.services import run_analysis
+from portfolio.config import DEFAULT_CONFIG, MIN_RISK_AVERSION, get_asset_class
 
 bp = Blueprint("main", __name__)
 logger = logging.getLogger(__name__)
+
+DEFAULT_LOOKBACK_YEARS = 3
 
 
 def _default_form_values() -> dict:
     """Return the default form values shown on the landing page."""
     today = date.today()
+    lookback = timedelta(days=DEFAULT_LOOKBACK_YEARS * 365)
     return {
-        "tickers": "AAPL, MSFT, GOOGL, AMZN, NVDA",
-        "start_date": (today - timedelta(days=3 * 365)).isoformat(),
+        "tickers": ", ".join(get_asset_class("stocks").tickers[:5]),
+        "start_date": (today - lookback).isoformat(),
         "end_date": today.isoformat(),
-        "risk_free_rate": "0.04",
-        "risk_aversion": "3.0",
-        "market_ticker": "^GSPC",
+        "risk_free_rate": str(DEFAULT_CONFIG.risk_free_rate),
+        "risk_aversion": str(DEFAULT_CONFIG.risk_aversion),
+        "market_ticker": DEFAULT_CONFIG.market_ticker,
     }
-
-
-def _selected_asset_classes(form) -> list:
-    """Return the asset-class checkbox values, robust to plain dicts in tests."""
-    if hasattr(form, "getlist"):
-        return form.getlist("asset_classes")
-    raw = form.get("asset_classes", "")
-    return [value for value in raw.split(",") if value] if raw else []
 
 
 def _render_index(form_defaults, error: str | None, status: int = 200):
@@ -41,6 +39,7 @@ def _render_index(form_defaults, error: str | None, status: int = 200):
             defaults=form_defaults,
             asset_class_labels=ASSET_CLASS_LABELS,
             selected_asset_classes=_selected_asset_classes(form_defaults),
+            min_risk_aversion=MIN_RISK_AVERSION,
             error=error,
         ),
         status,
@@ -50,26 +49,26 @@ def _render_index(form_defaults, error: str | None, status: int = 200):
 @bp.route("/", methods=["GET"])
 def index():
     """Render the analysis form with sensible default values."""
-    body, status = _render_index(_default_form_values(), error=None)
-    return body, status
+    return _render_index(_default_form_values(), error=None)
 
 
 @bp.route("/analyze", methods=["POST"])
-@limiter.limit("10 per minute")
+@limiter.limit(lambda: current_app.config["RATELIMIT_ANALYZE"])
 def analyze():
     """Validate the form, run the analysis, and render the results page."""
     form = request.form
+    config = current_app.config.get("APP_CONFIG", DEFAULT_APP_CONFIG)
 
     try:
-        analysis_request = parse_form(form)
+        analysis_request = parse_form(form, config)
     except ValueError as exc:
         return _render_index(form, error=str(exc), status=400)
 
     try:
-        result = run_analysis(analysis_request)
+        result = run_analysis(analysis_request, config)
     except ValueError as exc:
         return _render_index(form, error=str(exc), status=400)
-    except Exception as exc:  # noqa: BLE001 — log and surface a generic message
+    except Exception as exc:
         logger.exception("Unexpected error while running analysis")
         return _render_index(
             form,
@@ -80,7 +79,6 @@ def analyze():
     return render_template(
         "results.html",
         result=result,
-        asset_class_labels=ASSET_CLASS_LABELS,
     )
 
 
